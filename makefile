@@ -17,4 +17,4 @@ $(ODIR)/%.o: src/%.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 clean:
-	rm $(ODIR)/*.o emulator
+	rm $(ODIR)/*.o emu
