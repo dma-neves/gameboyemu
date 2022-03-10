@@ -21,10 +21,24 @@ void decode_exec(uint8_t opcode);
 void tick()
 {
     uint8_t opcode;
-    mmu_read(cpu.pc, &opcode);
-    // cpu.pc += ?
-    cpu.pc++;
+    mmu_read(cpu.pc++, &opcode);
     decode_exec(opcode);
+}
+
+uint8_t read_u8_param()
+{
+    uint8_t param;
+    mmu_read(cpu.pc++, &param);
+    return param;
+}
+
+uint16_t read_u16_param()
+{
+    uint8_t low, high;
+    mmu_read(cpu.pc++, &low);
+    mmu_read(cpu.pc++, &high);
+
+    return (uint16_t)low & ( (uint16_t)high << 0x8 );
 }
 
 void decode_exec(uint8_t opcode)
@@ -32,11 +46,14 @@ void decode_exec(uint8_t opcode)
     printf("executing: %x\n", opcode);
     switch (opcode)
     {
-        case 0x1: // LD BC,d16
-            break; 
+        case 0x01: cpu.bc = read_u16_param(); break; // LD BC,u16
+        case 0x02: mmu_write(cpu.bc, cpu.a); break; // LD (BC),A
 
-        case 0x2: // LD (BC),A
-            break; 
+        case 0x31: cpu.sp = read_u16_param(); break; // LD SP,u16
+
+        case 0xC3: break; // JP u16
+
+        case 0xFE: break; // CP A,u8
 
         default: printf("opcode not implemented\n"); break;
     }

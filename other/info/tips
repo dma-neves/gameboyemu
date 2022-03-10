@@ -1,0 +1,13 @@
+My standard tips:
+
+    Make read_byte()/write_byte() functions. A lot of the Gameboy's addresses do funny things when read/written that you can't emulate if you use a single array for memory and directly access it.
+
+    Increment PC whenever you read a byte at PC. It'll make the jump instructions a lot saner.
+
+    Use izik's gbops table. Set it to 8x - the Gameboy opcodes are actually octal encoded (mostly - cut the opcode byte into 2,3,3 bits) and the patterns leap out
+
+    Make reads of the joypad register return the written value|0x0F. This means "no buttons pressed". Make the "LY" reads return 144 (0x90) for now - the boot ROM (among others) waits on this value, so until you implement it properly 0x90 stops infinite loops happening on you.
+
+    RLC and RL are the opposite of what you think. The "C" means circular (8 bit rotate) not carry. RL is the one the sets the low bit to carry_in.
+
+    Come on the discord.

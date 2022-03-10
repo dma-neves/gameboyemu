@@ -32,7 +32,7 @@ void init_sdl()
 int loadRom(char* file)
 {
     FILE *fp;
-    int c, i, max = MEM_SIZE;
+    int c, i, max = VRAM;
 
     fp = fopen(file, "rb");
     if (fp == NULL)
@@ -41,8 +41,8 @@ int loadRom(char* file)
         return -1;
     }
 
-    for (i = 0; i < max && (c = getc(fp)) != EOF; i++)
-        mmu_write(rom_b00() + i, (uint8_t)c);
+    for (i = 0; i <= max && (c = getc(fp)) != EOF; i++)
+        mmu_write(ROM_B00 + i, (uint8_t)c);
 
     if(c != EOF)
     {
@@ -54,6 +54,11 @@ int loadRom(char* file)
     return fclose(fp);
 }
 
+void resetSystem()
+{
+    resetMemory();
+}
+
 int main(int argc, char** argv)
 {
     if(argc < 2)
@@ -62,6 +67,7 @@ int main(int argc, char** argv)
         return 0;
     }
 
+    resetSystem();
     loadRom(argv[1]);
     init_sdl();
 
