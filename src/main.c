@@ -10,8 +10,14 @@
 #define HEIGHT 144
 #define SCALE 3
 
+/*
+    gameboy's cpu runs at 4194304MHz <=> 
+    (4194304 * 10^6) * (1/60) = 69905066666 cycles every 1/60 seconds
+*/
+#define CYCLE_THRESHOLD 69905066666
+
 /* flags */
-char running = 1;
+uint8_t running = 1;
 
 /* SDL */
 SDL_Window* window;
@@ -69,30 +75,31 @@ int main(int argc, char** argv)
 
     reset_system();
     load_rom(argv[1]);
-    init_sdl();
+    // init_sdl();
 
-    clock_t c = 0;
-    float dt;
-    clock_t timer_60;
+    long cycles = 0;
+    double clk = 0;
+    double dt;
+    double timer_60;
     while(running)
     {
         handle_events();
 
-        dt = c;
-        c = clock()/CLOCKS_PER_SEC;
-        dt = c - dt;
+        dt = clk;
+        clk = (double)clock()/CLOCKS_PER_SEC;
+        dt = clk - dt;
         timer_60 += dt;
 
-        //if(timer_60 >= 1.f/60.f)
-        if(timer_60 >= 1.f)
-        {
-            // Update display at a 60Hz frequency
-            timer_60 = 0;
-            update();
-            render();
-        }
+        if(cycles < CYCLE_THRESHOLD)
+            cycles += step();
 
-        render(renderer);
+        if(timer_60 >= 1.f/60.f)
+        {
+            // Update display at a 60Hz frequency and reset cycle counter
+            cycles = 0;
+            timer_60 = 0;
+            // render();
+        }
     }
 }
 
@@ -124,9 +131,4 @@ void handle_events()
         default:
             break;
     }
-}
-
-void update()
-{
-    step();
 }

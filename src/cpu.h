@@ -32,6 +32,6 @@ struct cpu
     uint16_t pc;
 };
 
-void step();
+uint8_t step();
 
 #endif

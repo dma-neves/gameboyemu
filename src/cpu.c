@@ -19,14 +19,78 @@ void set_cflag(uint8_t value) { if(value) cpu.f |= 0x10; else cpu.f &= 0xEF; }
 void decode_exec(uint8_t opcode);
 void decode_exec_cb(uint8_t opcode);
 
-void step()
+/*
+    Extra cycles regarding conditional jumps that can take more 
+    cycles if the condition is met
+*/
+uint8_t extra_cycles;
+
+static const uint8_t op_cycles[0x100] = {
+    4, 12, 8, 8, 4, 4, 8, 4,     20, 8, 8, 8, 4, 4, 8, 4, // 0x0_
+    4, 12, 8, 8, 4, 4, 8, 4,     12, 8, 8, 8, 4, 4, 8, 4, // 0x1_
+    8, 12, 8, 8, 4, 4, 8, 4,     8, 8, 8, 8, 4, 4, 8, 4, // 0x2_
+    8, 12, 8, 8, 12, 12, 12, 4,  8, 8, 8, 8, 4, 4, 8, 4, // 0x3_
+    4, 4, 4, 4, 4, 4, 8, 4,  4, 4, 4, 4, 4, 4, 8, 4, // 0x4_
+    4, 4, 4, 4, 4, 4, 8, 4,  4, 4, 4, 4, 4, 4, 8, 4, // 0x5_
+    4, 4, 4, 4, 4, 4, 8, 4,  4, 4, 4, 4, 4, 4, 8, 4, // 0x6_
+    8, 8, 8, 8, 8, 8, 4, 8,  4, 4, 4, 4, 4, 4, 8, 4, // 0x7_
+    4, 4, 4, 4, 4, 4, 8, 4,  4, 4, 4, 4, 4, 4, 8, 4, // 0x8_
+    4, 4, 4, 4, 4, 4, 8, 4,  4, 4, 4, 4, 4, 4, 8, 4, // 0x9_
+    4, 4, 4, 4, 4, 4, 8, 4,  4, 4, 4, 4, 4, 4, 8, 4, // 0xa_
+    4, 4, 4, 4, 4, 4, 8, 4,  4, 4, 4, 4, 4, 4, 8, 4, // 0xb_
+    8, 12, 12, 16, 12, 16, 8, 16,  8, 16, 12, 4, 12, 24, 8, 16, // 0xc_
+    8, 12, 12,  0, 12, 16, 8, 16,  8, 16, 12, 0, 12,  0, 8, 16, // 0xd_
+    12, 12, 8,  0, 0, 16, 8, 16,  16,  4, 16, 0,  0,  0, 8, 16, // 0xe_
+    12, 12, 8,  4, 0, 16, 8, 16,  12,  8, 16, 4,  0,  0, 8, 16  // 0xf_
+};
+
+static const uint8_t cb_op_cycles[0x100] = {
+    8, 8, 8, 8, 8,  8, 16, 8,  8, 8, 8, 8, 8, 8, 16, 8, // 0x0_
+    8, 8, 8, 8, 8,  8, 16, 8,  8, 8, 8, 8, 8, 8, 16, 8, // 0x1_
+    8, 8, 8, 8, 8,  8, 16, 8,  8, 8, 8, 8, 8, 8, 16, 8, // 0x2_
+    8, 8, 8, 8, 8,  8, 16, 8,  8, 8, 8, 8, 8, 8, 16, 8, // 0x3_
+    8, 8, 8, 8, 8,  8, 12, 8,  8, 8, 8, 8, 8, 8, 12, 8, // 0x4_
+    8, 8, 8, 8, 8,  8, 12, 8,  8, 8, 8, 8, 8, 8, 12, 8, // 0x5_
+    8, 8, 8, 8, 8,  8, 12, 8,  8, 8, 8, 8, 8, 8, 12, 8, // 0x6_
+    8, 8, 8, 8, 8,  8, 12, 8,  8, 8, 8, 8, 8, 8, 12, 8, // 0x7_
+    8, 8, 8, 8, 8,  8, 16, 8,  8, 8, 8, 8, 8, 8, 16, 8, // 0x8_
+    8, 8, 8, 8, 8,  8, 16, 8,  8, 8, 8, 8, 8, 8, 16, 8, // 0x9_
+    8, 8, 8, 8, 8,  8, 16, 8,  8, 8, 8, 8, 8, 8, 16, 8, // 0xa_
+    8, 8, 8, 8, 8,  8, 16, 8,  8, 8, 8, 8, 8, 8, 16, 8, // 0xb_
+    8, 8, 8, 8, 8,  8, 16, 8,  8, 8, 8, 8, 8, 8, 16, 8, // 0xc_
+    8, 8, 8, 8, 8,  8, 16, 8,  8, 8, 8, 8, 8, 8, 16, 8, // 0xd_
+    8, 8, 8, 8, 8,  8, 16, 8,  8, 8, 8, 8, 8, 8, 16, 8, // 0xe_
+    8, 8, 8, 8, 8,  8, 16, 8,  8, 8, 8, 8, 8, 8, 16, 8  // 0xf_
+};
+
+uint8_t step()
 {
+    extra_cycles = 0;
     uint8_t opcode;
     mmu_read(cpu.pc++, &opcode);
-    decode_exec(opcode);
+
+    if(opcode == 0xCB)
+    {
+        mmu_read(cpu.pc++, &opcode);
+        printf("executing: 0xCB %x\n", opcode);
+        decode_exec_cb(opcode);
+        return extra_cycles + cb_op_cycles[opcode];
+    }
+    else
+    {
+        printf("executing: %x\n", opcode);
+        decode_exec(opcode);
+        return extra_cycles + op_cycles[opcode];
+    }
 }
 
 /* -------------- utils -------------- */
+
+void opcode_not_implemented()
+{
+    printf("opcode not implemented\n");
+    getchar();
+}
 
 uint8_t read_u8_param()
 {
@@ -85,10 +149,10 @@ uint8_t* get_aligned_register(uint8_t opcode)
     }
 }
 
-uint8_t get_aligned_operand(uint8_t opcode)
-{
-    return get_register( get_aligned_register(opcode) );
-}
+// uint8_t get_aligned_operand(uint8_t opcode)
+// {
+//     return get_register( get_aligned_register(opcode) );
+// }
 
 /* -------------- 16 bit load instructions -------------- */
 
@@ -319,17 +383,16 @@ void restart(uint16_t address)
 void jump_relative(uint8_t cond, uint8_t offset)
 {
     if(cond)
-        cpu.pc += offset;
+    {
+        cpu.pc += (int8_t)offset;
+        extra_cycles += 4;
+    }
 }
 
 /* -------------- decode & execute -------------- */
 
 void decode_exec(uint8_t opcode)
 {
-    uint8_t cb = 0;
-
-    printf("executing: %x\n", opcode);
-
     if(opcode == 0x76)
     {
         // TODO: halt
@@ -353,13 +416,14 @@ void decode_exec(uint8_t opcode)
 
             case 0x3E: cpu.a = read_u8_param(); break; // LD A,u8
 
-            default: printf("opcode not implemented\n"); break;
+            default: opcode_not_implemented(); break;
         }   
     }
     else if(opcode < 0xC0)
     {
-        uint8_t operand = get_aligned_operand(opcode);
-
+        uint8_t* reg = get_aligned_register(opcode);
+        uint8_t operand = get_register(reg);
+        
         if(opcode < 0x80)
         {
             // LD - Load instruction
@@ -375,6 +439,8 @@ void decode_exec(uint8_t opcode)
                 case 0x5: cpu.l = operand; break;
                 case 0x6: mmu_write(cpu.hl, operand); break;
                 case 0x7: cpu.a = operand; break;
+
+                default: printf("error: invalid 8bit load opcode\n"); break;
             }
         }
         else
@@ -393,12 +459,10 @@ void decode_exec(uint8_t opcode)
                 case 0x6: or_u8(operand); break;
                 case 0x7: compare_u8(operand); break;
 
-                default: printf("opcode not implemented\n"); break;
+                default: printf("error: invalid 8bit arithmetic opcode\n"); break;
             }
         }
                 
-        //case 0xAF: xor_u8(&cpu.a, cpu.a); break; // XOR A,A
-
     }
     else
     {
@@ -406,21 +470,15 @@ void decode_exec(uint8_t opcode)
         {
             case 0xC3: break; // JP u16
 
-            case 0xCB: cb = 1; break; // PREFIX CB
+            case 0xCB: /* handled before */; break; // PREFIX CB
 
             case 0xE2: mmu_write(0xFF00 + cpu.c, cpu.a); break; // LD (FF00+C),A
 
             case 0xFE: compare_u8(read_u8_param()); break; // CP A,u8
             case 0xFF: restart(0x38); break; // RST 38h
 
-            default: printf("opcode not implemented\n"); break;
+            default: opcode_not_implemented(); break;
         }
-    }
-
-    if(cb)
-    {
-        mmu_read(cpu.pc++, &opcode);
-        decode_exec_cb(opcode);
     }
 }
 
@@ -432,7 +490,7 @@ void decode_exec_cb(uint8_t opcode)
     {
         // Rotate and Shift instructions
 
-        // Rotate and shift registers are contiguously aligned within opcodes table
+        // Rotate and shift operators are contiguously aligned within opcodes table
         switch ( (opcode-0x0) / 0x8 )
         {
             case 0x0: rlc(reg); break;
@@ -444,13 +502,13 @@ void decode_exec_cb(uint8_t opcode)
             case 0x6: swap(reg); break;
             case 0x7: srl(reg); break;
 
-            default: printf("opcode not implemented\n"); break;
+            default: printf("error: invalid rotate/shift opcode\n"); break;
         }
     }
     else if(opcode < 0x80)
     {
         // BIT b,r
-        uint8_t bitn = (opcode-0x40) / 0x8; // TODO: verivy this
+        uint8_t bitn = (opcode-0x40) / 0x8; // TODO: verify this
         test_bit(reg, bitn);
     }
     else if(opcode < 0xC0)
