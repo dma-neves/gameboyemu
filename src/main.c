@@ -18,7 +18,7 @@ SDL_Window* window;
 SDL_Renderer* renderer;
 
 void render();
-void handleEvents();
+void handle_events();
 void update();
 
 void init_sdl()
@@ -29,7 +29,7 @@ void init_sdl()
     SDL_RenderSetLogicalSize(renderer, WIDHT, HEIGHT);
 }
 
-int loadRom(char* file)
+int load_rom(char* file)
 {
     FILE *fp;
     int c, i, max = VRAM;
@@ -54,9 +54,9 @@ int loadRom(char* file)
     return fclose(fp);
 }
 
-void resetSystem()
+void reset_system()
 {
-    resetMemory();
+    reset_memory();
 }
 
 int main(int argc, char** argv)
@@ -67,8 +67,8 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    resetSystem();
-    loadRom(argv[1]);
+    reset_system();
+    load_rom(argv[1]);
     init_sdl();
 
     clock_t c = 0;
@@ -76,7 +76,7 @@ int main(int argc, char** argv)
     clock_t timer_60;
     while(running)
     {
-        handleEvents();
+        handle_events();
 
         dt = c;
         c = clock()/CLOCKS_PER_SEC;
@@ -106,7 +106,7 @@ void render()
     SDL_RenderPresent(renderer);
 }
 
-void handleEvents()
+void handle_events()
 {
     SDL_Event event;
     SDL_PollEvent(&event);

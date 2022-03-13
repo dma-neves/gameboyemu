@@ -1,9 +1,19 @@
 pandocs:
-  https://gbdev.gg8.se/files/docs/mirrors/pandocs.html
-  https://gbdev.io/pandocs/
+	https://gbdev.gg8.se/files/docs/mirrors/pandocs.html
+	https://gbdev.io/pandocs/
+
 cpu opcodes:
 	https://www.pastraiser.com/cpu/gameboy/gameboy_opcodes.html
-  https://izik1.github.io/gbops/
-technical reference: https://gekkio.fi/files/gb-docs/gbctr.pdf
-memory map: http://gameboy.mongenel.com/dmg/asmmemmap.html
-cpu manual: http://www.codeslinger.co.uk/pages/projects/gameboy/files/GB.pdf
+	https://izik1.github.io/gbops/
+
+technical reference:
+	https://gekkio.fi/files/gb-docs/gbctr.pdf
+
+memory map:
+	http://gameboy.mongenel.com/dmg/asmmemmap.html
+
+cpu manual:
+	http://www.codeslinger.co.uk/pages/projects/gameboy/files/GB.pdf
+
+boot rom:
+	https://gbdev.gg8.se/wiki/articles/Gameboy_Bootstrap_ROM

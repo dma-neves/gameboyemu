@@ -18,7 +18,7 @@
 #define HRAM 0xFF80
 #define IE 0xFFFF
 
-void resetMemory();
+void reset_memory();
 int mmu_write(uint16_t address, uint8_t byte);
 void mmu_read(uint16_t address, uint8_t* dest);
 
