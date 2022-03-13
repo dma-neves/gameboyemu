@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#define REG_HL NULL
+
 struct cpu
 {
     union
@@ -30,6 +32,6 @@ struct cpu
     uint16_t pc;
 };
 
-void tick();
+void step();
 
 #endif

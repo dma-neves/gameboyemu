@@ -6,10 +6,10 @@
 
 struct cpu cpu;
 
-uint8_t zflag() { return cpu.f & 0x80; }
-uint8_t nflag() { return cpu.f & 0x40; }
-uint8_t hflag() { return cpu.f & 0x20; }
-uint8_t cflag() { return cpu.f & 0x10; }
+uint8_t zflag() { return (cpu.f & 0x80) != 0; }
+uint8_t nflag() { return (cpu.f & 0x40) != 0; }
+uint8_t hflag() { return (cpu.f & 0x20) != 0; }
+uint8_t cflag() { return (cpu.f & 0x10) != 0; }
 
 void set_zflag(uint8_t value) { if(value) cpu.f |= 0x80; else cpu.f &= 0x7F; }
 void set_nflag(uint8_t value) { if(value) cpu.f |= 0x40; else cpu.f &= 0xBF; }
@@ -19,7 +19,7 @@ void set_cflag(uint8_t value) { if(value) cpu.f |= 0x10; else cpu.f &= 0xEF; }
 void decode_exec(uint8_t opcode);
 void decode_exec_cb(uint8_t opcode);
 
-void tick()
+void step()
 {
     uint8_t opcode;
     mmu_read(cpu.pc++, &opcode);
@@ -44,32 +44,50 @@ uint16_t read_u16_param()
     return (uint16_t)low & ( (uint16_t)high << 0x8 );
 }
 
-/* Get byte stored at [HL] */
-uint8_t get_byte_hl()
+uint8_t get_register(uint8_t* reg)
 {
-    uint8_t byte;
-    mmu_read(cpu.hl, &byte);
-    return byte;
+    if(reg == REG_HL)
+    {
+        uint8_t byte;
+        mmu_read(cpu.hl, &byte);
+        return byte;
+    }
+
+    return *reg;
+}
+
+uint8_t set_register(uint8_t* reg, uint8_t byte)
+{
+    if(reg == REG_HL)
+        mmu_write(cpu.hl, byte);
+    else
+        *reg = byte;
 }
 
 /* 
-    A lot arithmetic and load opcodes use the same operand 
+    A lot arithmetic and load opcodes use the same operand / register
     depending on the alignment of the opcode within the opcodes table
     (this saves a lot of repetitive disassembly)
 */
-uint8_t get_aligned_operand(uint8_t opcode)
+
+uint8_t* get_aligned_register(uint8_t opcode)
 {
     switch ( (opcode & 0xF) % 0x8 )
     {
-        case 0: return cpu.b;
-        case 1: return cpu.c;
-        case 2: return cpu.d;
-        case 3: return cpu.e;
-        case 4: return cpu.h;
-        case 5: return cpu.l;
-        case 6: return get_byte_hl();
-        case 7: return cpu.a;
+        case 0: return &cpu.b;
+        case 1: return &cpu.c;
+        case 2: return &cpu.d;
+        case 3: return &cpu.e;
+        case 4: return &cpu.h;
+        case 5: return &cpu.l;
+        case 6: return REG_HL;
+        case 7: return &cpu.a;
     }
+}
+
+uint8_t get_aligned_operand(uint8_t opcode)
+{
+    return get_register( get_aligned_register(opcode) );
 }
 
 /* -------------- 16 bit load instructions -------------- */
@@ -165,12 +183,129 @@ void inc_register(uint8_t* r)
 
 /* -------------- Single-bit Operation instructions -------------- */
 
-void test_bit(uint8_t byte, uint8_t bitn)
+// Test bit bitn in register
+void test_bit(uint8_t* reg, uint8_t bitn)
 {
-    uint8_t bit = byte & (0x1 << bitn);
+    uint8_t bit = get_register(reg) & (0x1 << bitn);
     set_zflag(bit == 0);
     set_nflag(0);
     set_hflag(1);
+}
+
+// Reset bit bitn in register
+void res_bit(uint8_t* reg, uint8_t bitn)
+{
+    uint8_t byte = get_register(reg) & ~(0x1 << bitn);
+    set_register(reg, byte);
+}
+
+// Set bit bitn in register
+void set_bit(uint8_t* reg, uint8_t bitn)
+{
+    uint8_t byte = get_register(reg) | (0x1 << bitn);
+    set_register(reg, byte);
+}
+
+
+/* -------------- Rotate and Shift instructions -------------- */
+
+// Rotate left circular
+void rlc(uint8_t* reg)
+{
+    uint8_t byte = get_register(reg);
+    byte = (byte << 0x1) | (byte >> 0x7);
+    set_register(reg, byte);
+
+    set_zflag(byte == 0);
+    set_nflag(0);
+    set_hflag(0);
+    set_cflag(byte & 0x1);
+}
+
+// Rotate right circular
+void rrc(uint8_t* reg)
+{
+    uint8_t byte = get_register(reg);
+    byte = (byte >> 0x1) | (byte << 0x7);
+    set_register(reg, byte);
+
+    set_zflag(byte == 0);
+    set_nflag(0);
+    set_hflag(0);
+    set_cflag(byte & 0x80);
+}
+
+// Rotate left through carry
+void rl(uint8_t* reg)
+{
+    uint8_t oldbyte = get_register(reg);
+    uint8_t byte = (oldbyte << 0x1) | cflag();
+    set_register(reg, byte);
+
+    set_zflag(byte == 0);
+    set_nflag(0);
+    set_hflag(0);
+    set_cflag(oldbyte & 0x80);
+}
+
+// Rotate right through carry
+void rr(uint8_t* reg)
+{
+    uint8_t oldbyte = get_register(reg);
+    uint8_t byte = (oldbyte >> 0x1) | (cflag() << 0x7);
+    set_register(reg, byte);
+
+    set_zflag(byte == 0);
+    set_nflag(0);
+    set_hflag(0);
+    set_cflag(oldbyte & 0x0);
+}
+
+// Shift left into carry LSB set to 0
+void sla(uint8_t* reg)
+{
+    uint8_t oldbyte = get_register(reg);
+    uint8_t byte = oldbyte << 0x1;
+    set_register(reg, byte);
+
+    set_zflag(byte == 0);
+    set_nflag(0);
+    set_hflag(0);
+    set_cflag(oldbyte & 0x80);
+}
+
+// Shift right into carry MSB doent change
+void sra(uint8_t* reg)
+{
+    uint8_t oldbyte = get_register(reg);
+    uint8_t byte = (oldbyte & 0x80) | (oldbyte >> 0x1);
+    set_register(reg, byte);
+
+    set_zflag(byte == 0);
+    set_nflag(0);
+    set_hflag(0);
+    set_cflag(oldbyte & 0x1);
+}
+
+// Shift right into carry MSB set to 0
+void srl(uint8_t* reg)
+{
+    uint8_t oldbyte = get_register(reg);
+    uint8_t byte = oldbyte >> 0x1;
+    set_register(reg, byte);
+
+    set_zflag(byte == 0);
+    set_nflag(0);
+    set_hflag(0);
+    set_cflag(oldbyte & 0x1);
+}
+
+void swap(uint8_t* reg)
+{
+    uint8_t low = get_register(reg) & 0xF;
+    uint8_t high = get_register(reg) & 0xF0;
+    uint16_t byte = (low << 0x4) | (high >> 0x4);
+    set_register(reg, byte);
 }
 
 /* -------------- jumps -------------- */
@@ -291,11 +426,43 @@ void decode_exec(uint8_t opcode)
 
 void decode_exec_cb(uint8_t opcode)
 {
-    if(opcode >= 0x40 && opcode <= 0x7F)
+    uint8_t* reg = get_aligned_register(opcode);
+
+    if(opcode < 0x40)
+    {
+        // Rotate and Shift instructions
+
+        // Rotate and shift registers are contiguously aligned within opcodes table
+        switch ( (opcode-0x0) / 0x8 )
+        {
+            case 0x0: rlc(reg); break;
+            case 0x1: rrc(reg); break;
+            case 0x2: rl(reg); break;
+            case 0x3: rr(reg); break;
+            case 0x4: sla(reg); break;
+            case 0x5: sra(reg); break;
+            case 0x6: swap(reg); break;
+            case 0x7: srl(reg); break;
+
+            default: printf("opcode not implemented\n"); break;
+        }
+    }
+    else if(opcode < 0x80)
     {
         // BIT b,r
         uint8_t bitn = (opcode-0x40) / 0x8; // TODO: verivy this
-        uint8_t operand = get_aligned_operand(opcode);
-        test_bit(operand, bitn);
+        test_bit(reg, bitn);
+    }
+    else if(opcode < 0xC0)
+    {
+        // RES b,r
+        uint8_t bitn = (opcode-0x80) / 0x8;
+        res_bit(reg, bitn);
+    }
+    else
+    {
+        // SET b,r
+        uint8_t bitn = (opcode-0xC0) / 0x8;
+        set_bit(reg, bitn);
     }
 }

@@ -128,5 +128,5 @@ void handle_events()
 
 void update()
 {
-    tick();
+    step();
 }
