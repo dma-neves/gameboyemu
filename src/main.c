@@ -11,10 +11,10 @@
 #define SCALE 3
 
 /*
-    gameboy's cpu runs at 4194304MHz <=> 
-    (4194304 * 10^6) * (1/60) = 69905066666 cycles every 1/60 seconds
+    gameboy's cpu runs at 4194304Hz <=> 
+    (4194304) * (1/60) = 69905 cycles every 1/60 seconds
 */
-#define CYCLE_THRESHOLD 69905066666
+#define CYCLE_THRESHOLD 69905
 
 /* flags */
 uint8_t running = 1;

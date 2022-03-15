@@ -1,6 +1,7 @@
 #include "memory.h"
 
 #include <string.h>
+#include <stdio.h>
 
 uint8_t memory[MEM_SIZE];
 
@@ -30,6 +31,12 @@ void reset_memory()
 
 int mmu_write(uint16_t address, uint8_t byte)
 {
+    if(address == BOOT_OFF)
+    {
+        printf("Activating BOOT OFF\n");
+        getchar();
+    }
+
     if(address == BOOT_OFF && memory[address] == 0x1)
         return 0;
 

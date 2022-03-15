@@ -25,6 +25,9 @@ void decode_exec_cb(uint8_t opcode);
 */
 uint8_t extra_cycles;
 
+/*
+    Coppied from https://github.com/alt-romes/gameboyemulator/blob/master/src/cpu.c
+*/
 static const uint8_t op_cycles[0x100] = {
     4, 12, 8, 8, 4, 4, 8, 4,     20, 8, 8, 8, 4, 4, 8, 4, // 0x0_
     4, 12, 8, 8, 4, 4, 8, 4,     12, 8, 8, 8, 4, 4, 8, 4, // 0x1_
@@ -99,13 +102,17 @@ uint8_t read_u8_param()
     return param;
 }
 
+int8_t read_i8_param()
+{
+    return (int8_t)read_u8_param();
+}
+
 uint16_t read_u16_param()
 {
     uint8_t low, high;
     mmu_read(cpu.pc++, &low);
     mmu_read(cpu.pc++, &high);
-
-    return (uint16_t)low & ( (uint16_t)high << 0x8 );
+    return (uint16_t)low | ( (uint16_t)high << 0x8 );
 }
 
 uint8_t get_register(uint8_t* reg)
@@ -158,8 +165,8 @@ uint8_t* get_aligned_register(uint8_t opcode)
 
 void push_u16(uint16_t value)
 {
-    mmu_write(cpu.sp--, value & 0xF0);
-    mmu_write(cpu.sp--, value & 0xF);
+    mmu_write(cpu.sp--, (value >> 0x8));
+    mmu_write(cpu.sp--, value & 0xFF);
 }
 
 uint8_t pop_u16()
@@ -168,8 +175,7 @@ uint8_t pop_u16()
     uint8_t high;
     mmu_read(++cpu.sp, &low);
     mmu_read(++cpu.sp, &high);
-
-    return (uint16_t)(high << 0x8) & (uint16_t)low;
+    return (uint16_t)(high << 0x8) | (uint16_t)low;
 }
 
 /* -------------- 8 bit arithmetic -------------- */
@@ -237,12 +243,30 @@ void or_u8(uint8_t b)
     set_cflag(0);
 }
 
-void inc_register(uint8_t* r)
+void inc_u8_register(uint8_t* r)
 {
     *r++;
     set_zflag(*r == 0);
     set_nflag(0);
     set_hflag(*r & 0xF == 0);
+    // set_cflag(); not affected
+}
+
+void dec_u8_register(uint8_t* r)
+{
+    *r--;
+    set_zflag(*r == 0);
+    set_nflag(1);
+    set_hflag(*r & 0x0F == 0x0F); // TODO: why is this correct?
+    // set_cflag(); not affected
+}
+
+/* -------------- 16 bit arithmetic -------------- */
+
+void inc_u16_register(uint16_t* r)
+{
+    // Flags not affected
+    *r++;
 }
 
 /* -------------- Single-bit Operation instructions -------------- */
@@ -376,17 +400,28 @@ void swap(uint8_t* reg)
 
 void restart(uint16_t address)
 {
-    push_u16(cpu.pc);
+    push_u16(cpu.pc); // Push address of next instruction
     cpu.pc = address;
 }
 
-void jump_relative(uint8_t cond, uint8_t offset)
+void jump_relative(uint8_t cond, int8_t offset)
 {
     if(cond)
     {
-        cpu.pc += (int8_t)offset;
+        cpu.pc += offset;
         extra_cycles += 4;
     }
+}
+
+void call(uint16_t address)
+{
+    push_u16(cpu.pc); // Push address of next instruction
+    cpu.pc = address;
+}
+
+void ret()
+{
+    cpu.pc = pop_u16();
 }
 
 /* -------------- decode & execute -------------- */
@@ -401,19 +436,47 @@ void decode_exec(uint8_t opcode)
     {
         switch (opcode)
         {
+            case 0x00: break; // NOP
             case 0x01: cpu.bc = read_u16_param(); break; // LD BC,u16
             case 0x02: mmu_write(cpu.bc, cpu.a); break; // LD (BC),A
+            case 0x04: inc_u8_register(&cpu.b); break; // INC B
+            case 0x05: dec_u8_register(&cpu.b); break; // DEC B
+            case 0x06: cpu.b = read_u8_param(); break; // LD B,u8
 
-            case 0x0C: inc_register(&cpu.c); break; // INC C
+            case 0x0C: inc_u8_register(&cpu.c); break; // INC C
+            case 0x0D: dec_u8_register(&cpu.c); break; // DEC C
 
             case 0x0E: cpu.c = read_u8_param(); break; // LD C,u8
 
-            case 0x20: jump_relative(!zflag(), read_u8_param()); break; // JR NZ,i8
+            case 0x11: cpu.de = read_u16_param(); break; // LD DE,u16
+
+            case 0x13: inc_u16_register(&cpu.de); break; // INC DE
+
+            case 0x15: dec_u8_register(&cpu.d); break; // DEC D
+            case 0x16: cpu.d = read_u8_param(); break; // LD D,u8
+            case 0x17: rl(&cpu.a); break; // RLA TODO: verify
+
+            case 0x18: jump_relative(1, read_i8_param()); break; // JR i8
+
+            case 0x1A: mmu_read(cpu.de, &cpu.a); break; // LD A,(DE)
+
+            case 0x1D: dec_u8_register(&cpu.e); break; // DEC E
+            case 0x1E: cpu.e = read_u8_param(); break; // LD E,u8
+
+            case 0x20: jump_relative(!zflag(), read_i8_param()); break; // JR NZ,i8
             case 0x21: cpu.hl = read_u16_param(); break; // LD HL,u16
+            case 0x22: mmu_write(cpu.hl++, cpu.a); break; // LD (HL+),A
+            case 0x23: inc_u16_register(&cpu.hl); break; // INC HL
+            case 0x24: inc_u8_register(&cpu.h); break; // INC H
+
+            case 0x28: jump_relative(zflag(), read_i8_param()); break; // JR Z,i8
+
+            case 0x2E: cpu.l = read_u8_param(); break; // LD L,u8
 
             case 0x31: cpu.sp = read_u16_param(); break; // LD SP,u16
             case 0x32: mmu_write(cpu.hl--, cpu.a); break; // LD (HL-),A
 
+            case 0x3D: dec_u8_register(&cpu.a); break; // DEC A
             case 0x3E: cpu.a = read_u8_param(); break; // LD A,u8
 
             default: opcode_not_implemented(); break;
@@ -468,11 +531,25 @@ void decode_exec(uint8_t opcode)
     {
         switch (opcode)
         {
+            case 0xC1: cpu.bc = pop_u16(); break; // POP BC
+
             case 0xC3: break; // JP u16
+
+            case 0xC5: push_u16(cpu.bc); break; // PUSH BC
+
+            case 0xC9: ret(); break; // RET
 
             case 0xCB: /* handled before */; break; // PREFIX CB
 
+            case 0xCD: call( read_u16_param() ); break; // CALL u16
+
+            case 0xE0: mmu_write(0xFF00 + read_u8_param(), cpu.a); break; // LD (FF00+u8),A
+
             case 0xE2: mmu_write(0xFF00 + cpu.c, cpu.a); break; // LD (FF00+C),A
+
+            case 0xEA: mmu_write(read_u16_param(), cpu.a); break; // LD (u16),A
+
+            case 0xF0: mmu_read(0xFF00 + read_u8_param(), &cpu.a); break; // LD A,(FF00+u8)
 
             case 0xFE: compare_u8(read_u8_param()); break; // CP A,u8
             case 0xFF: restart(0x38); break; // RST 38h
