@@ -26,7 +26,7 @@ void decode_exec_cb(uint8_t opcode);
 uint8_t extra_cycles;
 
 /*
-    Coppied from https://github.com/alt-romes/gameboyemulator/blob/master/src/cpu.c
+    Cycles arrays coppied from https://github.com/alt-romes/gameboyemulator/blob/master/src/cpu.c
 */
 static const uint8_t op_cycles[0x100] = {
     4, 12, 8, 8, 4, 4, 8, 4,     20, 8, 8, 8, 4, 4, 8, 4, // 0x0_
@@ -245,19 +245,21 @@ void or_u8(uint8_t b)
 
 void inc_u8_register(uint8_t* r)
 {
-    *r++;
-    set_zflag(*r == 0);
+    uint8_t result = get_register(r) + 1;
+    set_register(r, result);
+    set_zflag(result == 0);
     set_nflag(0);
-    set_hflag(*r & 0xF == 0);
+    set_hflag(result & 0xF == 0);
     // set_cflag(); not affected
 }
 
 void dec_u8_register(uint8_t* r)
 {
-    *r--;
-    set_zflag(*r == 0);
+    uint8_t result = get_register(r) - 1;
+    set_register(r, result);
+    set_zflag(result == 0);
     set_nflag(1);
-    set_hflag(*r & 0x0F == 0x0F); // TODO: why is this correct?
+    set_hflag(result & 0x0F == 0x0F); // TODO: why is this correct?
     // set_cflag(); not affected
 }
 
@@ -334,6 +336,20 @@ void rl(uint8_t* reg)
     set_nflag(0);
     set_hflag(0);
     set_cflag(oldbyte & 0x80);
+}
+
+// Rotate A left through carry
+// Note: Contrary to RL, RLA does not affect the zero flag
+void rla()
+{
+    uint8_t oldbyte = cpu.a;
+    uint8_t byte = (oldbyte << 0x1) | cflag();
+    cpu.a = byte;
+
+    set_zflag(byte == 0);
+    set_nflag(0);
+    set_hflag(0);
+    // set_cflag(oldbyte & 0x80); Not affected
 }
 
 // Rotate right through carry
@@ -454,7 +470,7 @@ void decode_exec(uint8_t opcode)
 
             case 0x15: dec_u8_register(&cpu.d); break; // DEC D
             case 0x16: cpu.d = read_u8_param(); break; // LD D,u8
-            case 0x17: rl(&cpu.a); break; // RLA TODO: verify
+            case 0x17: rla(); break; // RLA
 
             case 0x18: jump_relative(1, read_i8_param()); break; // JR i8
 

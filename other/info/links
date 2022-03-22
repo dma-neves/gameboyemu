@@ -5,6 +5,7 @@ pandocs:
 cpu opcodes:
 	https://www.pastraiser.com/cpu/gameboy/gameboy_opcodes.html
 	https://izik1.github.io/gbops/
+	https://rgbds.gbdev.io/docs/v0.5.1/gbz80.7#JR_e8
 
 technical reference:
 	https://gekkio.fi/files/gb-docs/gbctr.pdf
@@ -17,3 +18,6 @@ cpu manual:
 
 boot rom:
 	https://gbdev.gg8.se/wiki/articles/Gameboy_Bootstrap_ROM
+
+The Gameboy Emulator Development Guide:
+	https://hacktixme.ga/GBEDG/

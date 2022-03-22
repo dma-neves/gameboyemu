@@ -1,9 +1,15 @@
 #include "memory.h"
+#include "timer.h"
 
 #include <string.h>
 #include <stdio.h>
 
 uint8_t memory[MEM_SIZE];
+
+uint8_t* tdiv = memory + DIV_ADR;
+uint8_t* tima = memory + TIMA_ADR;
+uint8_t* tma = memory + TMA_ADR;
+uint8_t* tac = memory + TAC_ADR;
 
 const uint8_t bootrom[0x100] = {
     0x31, 0xFE, 0xFF, 0xAF, 0x21, 0xFF, 0x9F, 0x32, 0xCB, 0x7C, 0x20, 0xFB, 0x21, 0x26, 0xFF, 0x0E,
@@ -31,21 +37,24 @@ void reset_memory()
 
 int mmu_write(uint16_t address, uint8_t byte)
 {
-    if(address == BOOT_OFF)
+    if(address == BOOT_OFF_ADR)
     {
         printf("Activating BOOT OFF\n");
         getchar();
     }
 
-    if(address == BOOT_OFF && memory[address] == 0x1)
+    if(address == BOOT_OFF_ADR && memory[address] == 0x1)
         return 0;
+
+    if(address == DIV_ADR)
+        reset_div();
 
     memory[address] = byte;
 }
 
 void mmu_read(uint16_t address, uint8_t* dest)
 {
-    if(address <= 0x00FF && !memory[BOOT_OFF])
+    if(address <= 0x00FF && !memory[BOOT_OFF_ADR])
         *dest = bootrom[address];
     else
         *dest = memory[address];

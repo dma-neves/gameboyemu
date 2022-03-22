@@ -5,6 +5,7 @@
 
 #include "memory.h"
 #include "cpu.h"
+#include "timer.h"
 
 #define WIDHT 160
 #define HEIGHT 144
@@ -38,7 +39,7 @@ void init_sdl()
 int load_rom(char* file)
 {
     FILE *fp;
-    int c, i, max = VRAM;
+    int c, i, max = VRAM_ADR;
 
     fp = fopen(file, "rb");
     if (fp == NULL)
@@ -48,7 +49,7 @@ int load_rom(char* file)
     }
 
     for (i = 0; i <= max && (c = getc(fp)) != EOF; i++)
-        mmu_write(ROM_B00 + i, (uint8_t)c);
+        mmu_write(ROM_B00_ADR + i, (uint8_t)c);
 
     if(c != EOF)
     {
@@ -91,7 +92,11 @@ int main(int argc, char** argv)
         timer_60 += dt;
 
         if(cycles < CYCLE_THRESHOLD)
-            cycles += step();
+        {
+            uint8_t step_cycles = step();
+            update_timers(step_cycles);
+            cycles += step_cycles;
+        }
 
         if(timer_60 >= 1.f/60.f)
         {
