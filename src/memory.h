@@ -18,6 +18,9 @@
 #define TIMA_ADR 0xFF05
 #define TMA_ADR 0xFF06
 #define TAC_ADR 0xFF07
+#define LY_ADR 0xFF44
+#define WY_ADR 0xFF4A
+#define WX_ADR 0xFF4B
 #define BOOT_OFF_ADR 0xFF50
 #define HRAM_ADR 0xFF80
 #define IE_ADR 0xFFFF
@@ -26,6 +29,7 @@ extern uint8_t* tdiv;
 extern uint8_t* tima;
 extern uint8_t* tma;
 extern uint8_t* tac;
+extern uint8_t* ly;
 
 void reset_memory();
 int mmu_write(uint16_t address, uint8_t byte);

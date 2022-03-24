@@ -75,13 +75,13 @@ uint8_t step()
     if(opcode == 0xCB)
     {
         mmu_read(cpu.pc++, &opcode);
-        printf("executing: 0xCB %x\n", opcode);
+        //printf("executing: 0xCB %x\n", opcode);
         decode_exec_cb(opcode);
         return extra_cycles + cb_op_cycles[opcode];
     }
     else
     {
-        printf("executing: %x\n", opcode);
+        //printf("executing: %x\n", opcode);
         decode_exec(opcode);
         return extra_cycles + op_cycles[opcode];
     }
@@ -89,9 +89,9 @@ uint8_t step()
 
 /* -------------- utils -------------- */
 
-void opcode_not_implemented()
+void opcode_not_implemented(uint8_t opcode)
 {
-    printf("opcode not implemented\n");
+    printf("opcode not implemented: 0x%x\n", opcode);
     getchar();
 }
 
@@ -495,7 +495,7 @@ void decode_exec(uint8_t opcode)
             case 0x3D: dec_u8_register(&cpu.a); break; // DEC A
             case 0x3E: cpu.a = read_u8_param(); break; // LD A,u8
 
-            default: opcode_not_implemented(); break;
+            default: opcode_not_implemented(opcode); break;
         }   
     }
     else if(opcode < 0xC0)
@@ -570,7 +570,7 @@ void decode_exec(uint8_t opcode)
             case 0xFE: compare_u8(read_u8_param()); break; // CP A,u8
             case 0xFF: restart(0x38); break; // RST 38h
 
-            default: opcode_not_implemented(); break;
+            default: opcode_not_implemented(opcode); break;
         }
     }
 }

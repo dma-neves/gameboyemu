@@ -6,35 +6,21 @@
 #include "memory.h"
 #include "cpu.h"
 #include "timer.h"
-
-#define WIDHT 160
-#define HEIGHT 144
-#define SCALE 3
+#include "ppu.h"
+#include "ui.h"
 
 /*
     gameboy's cpu runs at 4194304Hz <=> 
-    (4194304) * (1/60) = 69905 cycles every 1/60 seconds
+    (4194304) * (1/59.73) = 70221 cycles every ~ 1/60 seconds
 */
-#define CYCLE_THRESHOLD 69905
+#define CYCLE_THRESHOLD 70221
 
 /* flags */
 uint8_t running = 1;
 
-/* SDL */
-SDL_Window* window;
-SDL_Renderer* renderer;
-
 void render();
 void handle_events();
 void update();
-
-void init_sdl()
-{
-    SDL_Init(SDL_INIT_VIDEO);
-    SDL_Window* window = SDL_CreateWindow("gameboy", SDL_WINDOWPOS_CENTERED , SDL_WINDOWPOS_CENTERED, WIDHT*SCALE, HEIGHT*SCALE, SDL_WINDOW_SHOWN);
-    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, 0);
-    SDL_RenderSetLogicalSize(renderer, WIDHT, HEIGHT);
-}
 
 int load_rom(char* file)
 {
@@ -76,7 +62,7 @@ int main(int argc, char** argv)
 
     reset_system();
     load_rom(argv[1]);
-    // init_sdl();
+    init_ui();
 
     long cycles = 0;
     double clk = 0;
@@ -95,27 +81,19 @@ int main(int argc, char** argv)
         {
             uint8_t step_cycles = step();
             update_timers(step_cycles);
+            update_ppu(step_cycles);
             cycles += step_cycles;
         }
 
-        if(timer_60 >= 1.f/60.f)
+        if(timer_60 >= 1.f/59.73f)
         {
-            // Update display at a 60Hz frequency and reset cycle counter
+            // Update display at a ~ 60Hz frequency and reset cycle counter
+            ppu_new_frame();
             cycles = 0;
             timer_60 = 0;
-            // render();
+            render_ui();
         }
     }
-}
-
-void render()
-{
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
-    SDL_RenderClear(renderer);
-
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, SDL_ALPHA_OPAQUE);
-    //SDL_RenderDrawLine(renderer, 0, 50, WIDHT-2, 60);
-    SDL_RenderPresent(renderer);
 }
 
 void handle_events()

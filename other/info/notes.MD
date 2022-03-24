@@ -109,3 +109,8 @@ Intel 8080 + Zilog Z80.
     - FIFO 4Mhz Fetch 2Mhz
     - sprites ...
     - window ...
+
+
+**PPU extra notes**
+
+- Sprites stored in oam in 8*8 tiles (or 8*16) 2 bytes for each line (first byte contains first color bit, second byte contains second color bit)
