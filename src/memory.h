@@ -18,6 +18,9 @@
 #define TIMA_ADR 0xFF05
 #define TMA_ADR 0xFF06
 #define TAC_ADR 0xFF07
+#define LCDC_ADR 0xFF40
+#define SCY_ADR 0xFF42
+#define SCX_ADR 0xFF43
 #define LY_ADR 0xFF44
 #define WY_ADR 0xFF4A
 #define WX_ADR 0xFF4B
@@ -30,6 +33,9 @@ extern uint8_t* tima;
 extern uint8_t* tma;
 extern uint8_t* tac;
 extern uint8_t* ly;
+extern uint8_t* lcdc;
+extern uint8_t* scx;
+extern uint8_t* scy;
 
 void reset_memory();
 int mmu_write(uint16_t address, uint8_t byte);

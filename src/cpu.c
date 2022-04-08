@@ -19,6 +19,8 @@ void set_cflag(uint8_t value) { if(value) cpu.f |= 0x10; else cpu.f &= 0xEF; }
 void decode_exec(uint8_t opcode);
 void decode_exec_cb(uint8_t opcode);
 
+uint8_t debug = 0;
+
 /*
     Extra cycles regarding conditional jumps that can take more 
     cycles if the condition is met
@@ -66,6 +68,23 @@ static const uint8_t cb_op_cycles[0x100] = {
     8, 8, 8, 8, 8,  8, 16, 8,  8, 8, 8, 8, 8, 8, 16, 8  // 0xf_
 };
 
+/* -------------- debug -------------- */
+
+
+void print_cpu_state_wait()
+{
+    printf("cpu state:\n");
+    printf("pc: %x\n", cpu.pc);
+    printf("sp: %x\n", cpu.sp);
+
+    printf("af: %x a: %x f: %x\n", cpu.af, cpu.a, cpu.f);
+    printf("bc: %x b: %x c: %x\n", cpu.bc, cpu.b, cpu.c);
+    printf("de: %x d: %x e: %x\n", cpu.de, cpu.d, cpu.e);
+    printf("hl: %x h: %x l: %x\n", cpu.hl, cpu.h, cpu.l);
+    printf("\n\n");
+    getchar();
+}
+
 uint8_t step()
 {
     extra_cycles = 0;
@@ -75,14 +94,24 @@ uint8_t step()
     if(opcode == 0xCB)
     {
         mmu_read(cpu.pc++, &opcode);
-        //printf("executing: 0xCB %x\n", opcode);
+        if(debug)
+            printf("executing: 0xCB %x\n", opcode);
         decode_exec_cb(opcode);
+
+        if(debug)
+            print_cpu_state_wait();
+
         return extra_cycles + cb_op_cycles[opcode];
     }
     else
     {
-        //printf("executing: %x\n", opcode);
+        if(debug)
+            printf("executing: %x\n", opcode);
         decode_exec(opcode);
+
+        if(debug)
+            print_cpu_state_wait();
+
         return extra_cycles + op_cycles[opcode];
     }
 }
@@ -165,11 +194,11 @@ uint8_t* get_aligned_register(uint8_t opcode)
 
 void push_u16(uint16_t value)
 {
-    mmu_write(cpu.sp--, (value >> 0x8));
-    mmu_write(cpu.sp--, value & 0xFF);
+    mmu_write(cpu.sp--, (value >> 0x8)); // high
+    mmu_write(cpu.sp--, value & 0xFF);   // low
 }
 
-uint8_t pop_u16()
+uint16_t pop_u16()
 {
     uint8_t low;
     uint8_t high;
@@ -268,7 +297,7 @@ void dec_u8_register(uint8_t* r)
 void inc_u16_register(uint16_t* r)
 {
     // Flags not affected
-    *r++;
+    (*r)++;
 }
 
 /* -------------- Single-bit Operation instructions -------------- */
@@ -276,7 +305,7 @@ void inc_u16_register(uint16_t* r)
 // Test bit bitn in register
 void test_bit(uint8_t* reg, uint8_t bitn)
 {
-    uint8_t bit = get_register(reg) & (0x1 << bitn);
+    uint8_t bit = ( get_register(reg) >> bitn) & 0x1;
     set_zflag(bit == 0);
     set_nflag(0);
     set_hflag(1);
@@ -559,7 +588,15 @@ void decode_exec(uint8_t opcode)
 
             case 0xCD: call( read_u16_param() ); break; // CALL u16
 
-            case 0xE0: mmu_write(0xFF00 + read_u8_param(), cpu.a); break; // LD (FF00+u8),A
+            //case 0xE0: mmu_write(0xFF00 + read_u8_param(), cpu.a); break; // LD (FF00+u8),A
+
+            case 0xE0: 
+            {
+                // TODO: remove debug
+                uint8_t param = read_u8_param();
+                mmu_write(0xFF00 + param, cpu.a);
+                //printf("LD FF000 + %x, A\n", param); break;
+            } // LD (FF00+u8),A
 
             case 0xE2: mmu_write(0xFF00 + cpu.c, cpu.a); break; // LD (FF00+C),A
 

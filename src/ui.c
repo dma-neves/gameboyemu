@@ -20,14 +20,10 @@ SDL_Renderer* renderer;
 SDL_Texture *lcd_texture;
 uint8_t pixels[WIDTH * HEIGHT * 4] = {0};
 
-/*
-    Note: LCD texture rendering (using an array of pixels) technique based on superzazu's code: 
-    https://gist.github.com/superzazu/f24aaf202248440c6097b85105d0bbae
-*/
-
 void get_tiles()
 {
     int adr = VRAM_ADR;
+    adr = 12*14;
 
     for(int i = 0; i < 256; i++)
     {
@@ -70,18 +66,18 @@ void init_sdl()
 
     /* ------------ temp test ------------ */
 
-    pixels[4 * 0 + 1] = 255;
-    pixels[4 * 1 + 1] = 255;
-    pixels[4 * 2 + 1] = 255;
-    pixels[46400 + 4 * 0 + 0] = 255;
-    pixels[46400 + 4 * 1 + 1] = 255;
-    pixels[46400 + 4 * 2 + 2] = 255;
-    pixels[46400 + 4 * 3 + 0] = 255;
-    pixels[46400 + 4 * 4 + 1] = 255;
-    pixels[46400 + 4 * 5 + 2] = 255;
-    pixels[WIDTH * HEIGHT * 4 - 4 * 1] = 255;
-    pixels[WIDTH * HEIGHT * 4 - 4 * 2] = 255;
-    pixels[WIDTH * HEIGHT * 4 - 4 * 3] = 255;
+    // pixels[4 * 0 + 1] = 255;
+    // pixels[4 * 1 + 1] = 255;
+    // pixels[4 * 2 + 1] = 255;
+    // pixels[46400 + 4 * 0 + 0] = 255;
+    // pixels[46400 + 4 * 1 + 1] = 255;
+    // pixels[46400 + 4 * 2 + 2] = 255;
+    // pixels[46400 + 4 * 3 + 0] = 255;
+    // pixels[46400 + 4 * 4 + 1] = 255;
+    // pixels[46400 + 4 * 5 + 2] = 255;
+    // pixels[WIDTH * HEIGHT * 4 - 4 * 1] = 255;
+    // pixels[WIDTH * HEIGHT * 4 - 4 * 2] = 255;
+    // pixels[WIDTH * HEIGHT * 4 - 4 * 3] = 255;
 }
 
 void init_ui()
@@ -112,7 +108,6 @@ void render_ui()
     SDL_RenderClear(renderer);
 
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, SDL_ALPHA_OPAQUE);
-    //SDL_RenderDrawLine(renderer, 0, 50, WIDTH-2, 60);
     SDL_RenderCopy(renderer, lcd_texture, NULL, NULL);
 
     SDL_RenderPresent(renderer);
