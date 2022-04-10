@@ -13,7 +13,7 @@
     gameboy's cpu runs at 4194304Hz <=> 
     (4194304) * (1/59.73) = 70221 cycles every ~ 1/60 seconds
 */
-#define CYCLE_THRESHOLD 70221
+#define CYCLE_THRESHOLD 70221 
 
 /* flags */
 uint8_t running = 1;
@@ -88,7 +88,7 @@ int main(int argc, char** argv)
         if(timer_60 >= 1.f/59.73f)
         {
             // Update display at a ~ 60Hz frequency and reset cycle counter
-            ppu_new_frame();
+            // ppu_new_frame();
             cycles = 0;
             timer_60 = 0;
             render_ui();

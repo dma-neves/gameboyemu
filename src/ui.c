@@ -20,35 +20,6 @@ SDL_Renderer* renderer;
 SDL_Texture *lcd_texture;
 uint8_t pixels[WIDTH * HEIGHT * 4] = {0};
 
-void get_tiles()
-{
-    int adr = VRAM_ADR;
-    adr = 12*14;
-
-    for(int i = 0; i < 256; i++)
-    {
-        for(int y = 0; y < 8; y++)
-        {
-            uint8_t byte_0;
-            uint8_t byte_1;
-            mmu_read(adr++, &byte_0);
-            mmu_read(adr++, &byte_1);
-            
-            for(int x = 0; x < 8; x++)
-            {
-                uint8_t bit_0 = ( byte_0 & (0x1 << x) ) != 0;
-                uint8_t bit_1 = ( byte_1 & (0x1 << x) ) != 0;
-                uint8_t color = bit_0 | (bit_1 << 1);
-
-                int tile_x = (i % 20)*8;
-                int tile_y = (i / 20)*8;
-
-                set_pixel(tile_x+x, tile_y+y, color);
-            }
-        }
-    }
-}
-
 void init_sdl()
 {
     SDL_Init(SDL_INIT_VIDEO);
@@ -62,22 +33,6 @@ void init_sdl()
         SDL_Log("Unable to create texture: %s", SDL_GetError());
         return;
     }
-
-
-    /* ------------ temp test ------------ */
-
-    // pixels[4 * 0 + 1] = 255;
-    // pixels[4 * 1 + 1] = 255;
-    // pixels[4 * 2 + 1] = 255;
-    // pixels[46400 + 4 * 0 + 0] = 255;
-    // pixels[46400 + 4 * 1 + 1] = 255;
-    // pixels[46400 + 4 * 2 + 2] = 255;
-    // pixels[46400 + 4 * 3 + 0] = 255;
-    // pixels[46400 + 4 * 4 + 1] = 255;
-    // pixels[46400 + 4 * 5 + 2] = 255;
-    // pixels[WIDTH * HEIGHT * 4 - 4 * 1] = 255;
-    // pixels[WIDTH * HEIGHT * 4 - 4 * 2] = 255;
-    // pixels[WIDTH * HEIGHT * 4 - 4 * 3] = 255;
 }
 
 void init_ui()
@@ -87,8 +42,6 @@ void init_ui()
 
 void update_texture()
 {
-    //get_tiles();
-
     int texture_pitch = 0;
     void* texture_pixels = NULL;
 

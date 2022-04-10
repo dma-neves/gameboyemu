@@ -6,10 +6,8 @@
 #include <stdio.h>
 
 #define TILE_BYTES 16
-// #define FRAME_CYCLES 70224
 #define LINE_CYCLES 456
 #define NLINES 144
-// #define SEARCH_CYCLES 80
 
 #define VIEW_PORT_WIDTH 160
 #define TILE_MAP_WIDTH 32
@@ -28,20 +26,20 @@ uint8_t tile_data_area() { return (*lcdc & 0x10) != 0; }
 uint8_t bg_tile_map_area() { return (*lcdc & 0x8) != 0; }
 uint8_t bg_window_enable() { return (*lcdc & 0x1) != 0; }
 
-// Scan line buffering
-
+// TODO: possibly remove
 void ppu_new_frame()
 {
     (*ly) = 0;
     line_cycle_counter = 0;
 }
 
+
 void draw_tiles()
 {
     if(!bg_window_enable())
         return;
 
-    // Tile map address depends on bg_tile_map_area
+    // Tile map address depends on bg_tile_map_area flag
     uint16_t tile_map_base_address = bg_tile_map_area() ? 0x9C00 : 0x9800;
 
     // Calculate pixel position taking into account the scx and scy offsets (viewport's position)
@@ -56,7 +54,7 @@ void draw_tiles()
         uint8_t tile_map_x = pixel_x / TILE_WIDTH;
         uint8_t tile_map_y = pixel_y / TILE_HEIGHT;
 
-        /* Select pixel in tile */
+        /* Select pixel whthin tile */
 
         uint8_t tile_x = pixel_x % TILE_WIDTH;
         uint8_t tile_y = pixel_y % TILE_HEIGHT;
@@ -71,16 +69,16 @@ void draw_tiles()
 
         uint16_t tile_data_address;
 
-        // Tile data is addressed differently depending on tile_data_area
+        // Tile data is addressed differently depending on tile_data_area flag
         if( tile_data_area() )
         {
             // tile_data_area == 1 => unsigned addressing & 0x8000 base address
-            tile_data_address = 0x8000 + tile_number;
+            tile_data_address = 0x8000 + tile_number*TILE_BYTES;
         }
         else
         {
             // tile_data_area == 0 => signed addressing & 0x9000 base address
-            tile_data_address = 0x8000 + (int8_t)tile_number;
+            tile_data_address = 0x9000 + ( (int8_t)tile_number )*TILE_BYTES;
         }
 
         // Fetch the 2 bytes (2 bytes required since each pixel is represented by a 2 bit color) 
@@ -90,18 +88,22 @@ void draw_tiles()
         mmu_read(tile_data_address, &tile_row_0);
         mmu_read(tile_data_address, &tile_row_1);
 
-        /* Get color bits */
+        /* Get color index bits */
 
         // bit 7 represents the leftmost pixel, and bit 0 the rightmost
-        uint8_t color_bit_0, color_bit_1, color;
-        color_bit_0 = tile_row_0 & (0x1 << (7-tile_x));
-        color_bit_1 = tile_row_1 & (0x1 << (7-tile_x));
-        color = color_bit_0 | (color_bit_1 << 0x1);
+        uint8_t color_index_bit_0, color_index_bit_1, color_index;
+        color_index_bit_0 = (tile_row_0 >> (7-tile_x)) & 0x1;
+        color_index_bit_1 = (tile_row_1 >> (7-tile_x)) & 0x1;
+        color_index = color_index_bit_0 | (color_index_bit_1 << 0x1);
 
-        /* Get color */
+        /* Get color and set pixel on lcd */
 
         // Color depends on palette assigned by BGP 0xFF47
-        // TOTO: color palette
+        uint8_t color_bit_0, color_bit_1, color;
+        color_bit_0 = ( (*bgp) >> color_index*2) & 0x1;
+        color_bit_1 = ( (*bgp) >> color_index*2+1) & 0x1;
+        color = color_bit_0 | (color_bit_1 << 0x1);
+
         set_pixel(i, *ly, color);
     }
 }
@@ -130,7 +132,13 @@ void update_ppu(uint8_t cycles)
         {
             draw_line();
         }
-
-        (*ly)++;
+        
+        if(*ly > 153)
+        {
+            (*ly) = 0;
+            line_cycle_counter = 0;
+        }
+        else
+            (*ly)++;
     }
 }

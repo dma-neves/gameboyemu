@@ -14,6 +14,9 @@ uint8_t* ly = memory + LY_ADR;
 uint8_t* lcdc = memory + LCDC_ADR;
 uint8_t* scx = memory + SCX_ADR;
 uint8_t* scy = memory + SCY_ADR;
+uint8_t* windowx = memory + WX_ADR;
+uint8_t* windowy = memory + WY_ADR;
+uint8_t* bgp = memory +BGP_ADR; 
 
 const uint8_t bootrom[0x100] = {
     0x31, 0xFE, 0xFF, 0xAF, 0x21, 0xFF, 0x9F, 0x32, 0xCB, 0x7C, 0x20, 0xFB, 0x21, 0x26, 0xFF, 0x0E,
@@ -46,10 +49,6 @@ int mmu_write(uint16_t address, uint8_t byte)
         // TODO: remove debug
         printf("Activating BOOT OFF\n");
     }
-
-    // TODO: remove debug
-    // if(address == LCDC_ADR)
-    //     printf("Changing lcdc to: %x\n", byte);
 
     if(address == BOOT_OFF_ADR && memory[address] == 0x1)
         return 0;

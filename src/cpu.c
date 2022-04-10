@@ -1,6 +1,7 @@
 #include "cpu.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "memory.h"
 
@@ -19,7 +20,7 @@ void set_cflag(uint8_t value) { if(value) cpu.f |= 0x10; else cpu.f &= 0xEF; }
 void decode_exec(uint8_t opcode);
 void decode_exec_cb(uint8_t opcode);
 
-uint8_t debug = 0;
+uint8_t debug_enable = 0;
 
 /*
     Extra cycles regarding conditional jumps that can take more 
@@ -94,24 +95,18 @@ uint8_t step()
     if(opcode == 0xCB)
     {
         mmu_read(cpu.pc++, &opcode);
-        if(debug)
-            printf("executing: 0xCB %x\n", opcode);
+        if(debug_enable) printf("executing: 0xCB %x\n", opcode);
         decode_exec_cb(opcode);
 
-        if(debug)
-            print_cpu_state_wait();
-
+        // if(debug_enable) print_cpu_state_wait();
         return extra_cycles + cb_op_cycles[opcode];
     }
     else
     {
-        if(debug)
-            printf("executing: %x\n", opcode);
+        if(debug_enable) printf("executing: %x\n", opcode);
         decode_exec(opcode);
 
-        if(debug)
-            print_cpu_state_wait();
-
+        // if(debug_enable) print_cpu_state_wait();
         return extra_cycles + op_cycles[opcode];
     }
 }
@@ -121,7 +116,7 @@ uint8_t step()
 void opcode_not_implemented(uint8_t opcode)
 {
     printf("opcode not implemented: 0x%x\n", opcode);
-    getchar();
+    exit(1);
 }
 
 uint8_t read_u8_param()

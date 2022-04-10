@@ -22,6 +22,7 @@
 #define SCY_ADR 0xFF42
 #define SCX_ADR 0xFF43
 #define LY_ADR 0xFF44
+#define BGP_ADR 0xFF47
 #define WY_ADR 0xFF4A
 #define WX_ADR 0xFF4B
 #define BOOT_OFF_ADR 0xFF50
@@ -36,6 +37,10 @@ extern uint8_t* ly;
 extern uint8_t* lcdc;
 extern uint8_t* scx;
 extern uint8_t* scy;
+extern uint8_t* windowx;
+extern uint8_t* windowy;
+extern uint8_t* bgp;
+
 
 void reset_memory();
 int mmu_write(uint16_t address, uint8_t byte);
