@@ -5,15 +5,16 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#define TILE_BYTES 16
 #define LINE_CYCLES 456
 #define NLINES 144
+#define VBLANK 10
 
 #define VIEW_PORT_WIDTH 160
 #define TILE_MAP_WIDTH 32
 #define TILE_MAP_PIXEL_WIDTH 256
 #define TILE_MAP_PIXEL_HEIGHT 256
 
+#define TILE_BYTES 16
 #define TILE_WIDTH 8
 #define TILE_HEIGHT 8
 
@@ -133,7 +134,7 @@ void update_ppu(uint8_t cycles)
             draw_line();
         }
         
-        if(*ly > 153)
+        if(*ly >= NLINES+VBLANK)
         {
             (*ly) = 0;
             line_cycle_counter = 0;

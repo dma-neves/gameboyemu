@@ -4,6 +4,8 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "cpu.h"
+
 uint8_t memory[MEM_SIZE];
 
 uint8_t* tdiv = memory + DIV_ADR;
@@ -16,7 +18,10 @@ uint8_t* scx = memory + SCX_ADR;
 uint8_t* scy = memory + SCY_ADR;
 uint8_t* windowx = memory + WX_ADR;
 uint8_t* windowy = memory + WY_ADR;
-uint8_t* bgp = memory +BGP_ADR; 
+uint8_t* bgp = memory + BGP_ADR;
+uint8_t* ie = memory + IE_ADR;
+uint8_t* intf = memory + IF_ADR;
+
 
 const uint8_t bootrom[0x100] = {
     0x31, 0xFE, 0xFF, 0xAF, 0x21, 0xFF, 0x9F, 0x32, 0xCB, 0x7C, 0x20, 0xFB, 0x21, 0x26, 0xFF, 0x0E,
@@ -46,17 +51,30 @@ int mmu_write(uint16_t address, uint8_t byte)
 {
     if(address == BOOT_OFF_ADR)
     {
+        printf("Boot terminated\n");
         // TODO: remove debug
-        printf("Activating BOOT OFF\n");
+        set_debug(1);
     }
 
     if(address == BOOT_OFF_ADR && memory[address] == 0x1)
         return 0;
 
     if(address == DIV_ADR)
+    {
         reset_div();
+        return 0;
+    }
 
     memory[address] = byte;
+}
+
+int mmu_write_u16(uint16_t address, uint16_t byte)
+{
+    uint8_t lower = byte & 0xFF;
+    uint8_t higher = byte >> 8;
+
+    mmu_write(address, lower);
+    mmu_write(address+1, higher);
 }
 
 void mmu_read(uint16_t address, uint8_t* dest)
@@ -65,4 +83,13 @@ void mmu_read(uint16_t address, uint8_t* dest)
         *dest = bootrom[address];
     else
         *dest = memory[address];
+}
+
+void mmu_read_u16(uint16_t address, uint16_t* dest)
+{
+    uint8_t lower, higher;
+    mmu_read(address, &higher); // TODO: first lower?
+    mmu_read(address, &lower);
+
+    *dest = lower | (higher << 8);
 }

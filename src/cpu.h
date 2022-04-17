@@ -30,8 +30,10 @@ struct cpu
 
     uint16_t sp;
     uint16_t pc;
+    uint8_t ime;
 };
 
 uint8_t step();
+void set_debug(uint8_t value);
 
 #endif
