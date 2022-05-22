@@ -46,6 +46,7 @@ void draw_tiles()
     // Calculate pixel position taking into account the scx and scy offsets (viewport's position)
     uint16_t pixel_y = ( (*ly) + (*scy) ) % TILE_MAP_PIXEL_HEIGHT;
     
+    // TODO: Instead of iterating over every pixel, load chunks of 8 pixels every time
     for(uint16_t i = 0; i < VIEW_PORT_WIDTH; i++)
     {
         uint16_t pixel_x = (i + (*scx) ) % TILE_MAP_PIXEL_WIDTH;
@@ -129,10 +130,12 @@ void update_ppu(uint8_t cycles)
     {
         line_cycle_counter -= LINE_CYCLES;
 
+        // Set VBLANK interrupt flag
+        if(*ly == NLINES)
+            (*intf) |= 0x1;
+
         if(*ly < NLINES)
-        {
             draw_line();
-        }
         
         if(*ly >= NLINES+VBLANK)
         {

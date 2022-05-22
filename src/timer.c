@@ -31,7 +31,7 @@ void inc_tima()
     if(*tima == 0xFF)
     {
         *tima = *tma;
-        // TODO: interrupt
+        (*intf) |= (0x1 << 0x2);
     }
     else
         (*tima)++;

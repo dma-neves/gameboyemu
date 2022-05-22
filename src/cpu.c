@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "memory.h"
 
@@ -70,6 +71,12 @@ void set_nflag(uint8_t value) { if(value) cpu.f |= 0x40; else cpu.f &= 0xBF; }
 void set_hflag(uint8_t value) { if(value) cpu.f |= 0x20; else cpu.f &= 0xDF; }
 void set_cflag(uint8_t value) { if(value) cpu.f |= 0x10; else cpu.f &= 0xEF; }
 
+/* -------------- reset -------------- */
+
+void reset_cpu()
+{
+    memset(&cpu, 0, sizeof(cpu));
+}
 
 /* -------------- debug -------------- */
 
@@ -102,27 +109,31 @@ uint8_t step()
 {
     int cycles = 0;
     extra_cycles = 0;
-    uint8_t opcode;
-    mmu_read(cpu.pc++, &opcode);
 
-    if(opcode == 0xCB)
+    if(!cpu.hlt)
     {
+        uint8_t opcode;
         mmu_read(cpu.pc++, &opcode);
-        if(debug_enable) printf("cb %x %x\n", opcode, cpu.pc-2);
-        decode_exec_cb(opcode);
 
-        // if(debug_enable) print_cpu_state_wait();
+        if(opcode == 0xCB)
+        {
+            mmu_read(cpu.pc++, &opcode);
+            if(debug_enable) printf("cb %x %x\n", opcode, cpu.pc-2);
+            decode_exec_cb(opcode);
+
+            // if(debug_enable) print_cpu_state_wait();
+        }
+        else
+        {
+            if(debug_enable) printf("%x %x\n", opcode, cpu.pc-1);
+            decode_exec(opcode);
+
+            // if(debug_enable) print_cpu_state_wait();
+        }
+
+        cycles = extra_cycles + op_cycles[opcode];
     }
-    else
-    {
-        if(debug_enable) printf("%x %x\n", opcode, cpu.pc-1);
-        decode_exec(opcode);
 
-        // if(debug_enable) print_cpu_state_wait();
-    }
-
-    // TODO: verify if cycle count can be done outside ifs
-    cycles = extra_cycles + op_cycles[opcode];
     cycles += handle_interrupts();
     return cycles;
 }
@@ -143,6 +154,7 @@ int handle_interrupts()
         {
             interrupt_called = 1;
             cpu.ime = 0;
+            cpu.hlt = 0;
             
             uint8_t bitmask = ~(0x1 << i);
             (*ie) &= bitmask;
@@ -543,6 +555,7 @@ void decode_exec(uint8_t opcode)
     if(opcode == 0x76)
     {
         // TODO: halt
+        cpu.hlt = 1;
     }
     if(opcode < 0x40)
     {
@@ -671,7 +684,7 @@ void decode_exec(uint8_t opcode)
 
             case 0xF3: cpu.ime = 0; break; // DI
 
-            case 0xFB: cpu.ime = 1; break; // EI
+            case 0xFB: cpu.ime = 1; break; // EI TODO: Should be delayed by one instruction
 
             case 0xFE: compare_u8(read_u8_param()); break; // CP A,u8
             case 0xFF: restart(0x38); break; // RST 38h

@@ -50,6 +50,7 @@ int load_rom(char* file)
 void reset_system()
 {
     reset_memory();
+    reset_cpu();
 }
 
 int main(int argc, char** argv)

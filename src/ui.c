@@ -59,10 +59,7 @@ void render_ui()
 
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
     SDL_RenderClear(renderer);
-
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, SDL_ALPHA_OPAQUE);
     SDL_RenderCopy(renderer, lcd_texture, NULL, NULL);
-
     SDL_RenderPresent(renderer);
 }
 
