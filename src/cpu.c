@@ -152,14 +152,17 @@ int handle_interrupts()
     {
         if(((*ie) >> i) & 0x1 && ((*intf) >> i) & 0x1)
         {
-            interrupt_called = 1;
-            cpu.ime = 0;
-            cpu.hlt = 0;
-            
-            uint8_t bitmask = ~(0x1 << i);
-            (*ie) &= bitmask;
+            if(i != 0x1 || lcdc_stat_interrupt())
+            {
+                interrupt_called = 1;
+                cpu.ime = 0;
+                cpu.hlt = 0;
+                
+                uint8_t bitmask = ~(0x1 << i);
+                (*intf) &= bitmask;
 
-            call(interrupt_vector[i]);
+                call(interrupt_vector[i]);
+            }
         }
     }
 
@@ -554,8 +557,7 @@ void decode_exec(uint8_t opcode)
 {
     if(opcode == 0x76)
     {
-        // TODO: halt
-        cpu.hlt = 1;
+        cpu.hlt = 1; // HLT
     }
     if(opcode < 0x40)
     {

@@ -13,7 +13,9 @@ uint8_t* tima = memory + TIMA_ADR;
 uint8_t* tma = memory + TMA_ADR;
 uint8_t* tac = memory + TAC_ADR;
 uint8_t* ly = memory + LY_ADR;
+uint8_t* lyc = memory + LYC_ADR;
 uint8_t* lcdc = memory + LCDC_ADR;
+uint8_t* lcdc_stat = memory + LCDC_STAT_ADR;
 uint8_t* scx = memory + SCX_ADR;
 uint8_t* scy = memory + SCY_ADR;
 uint8_t* windowx = memory + WX_ADR;
@@ -79,6 +81,8 @@ int mmu_write_u16(uint16_t address, uint16_t byte)
 
 void mmu_read(uint16_t address, uint8_t* dest)
 {
+    // TODO: When the PPU is accessing some video-related memory, that memory is inaccessible to the CPU: writes are ignored, and reads return garbage values (usually $FF).
+
     if(address <= 0x00FF && !memory[BOOT_OFF_ADR])
         *dest = bootrom[address];
     else

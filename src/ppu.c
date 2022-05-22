@@ -8,6 +8,8 @@
 #define LINE_CYCLES 456
 #define NLINES 144
 #define VBLANK 10
+#define OAM_SEARCH_CYCLES 80
+#define MEM_READ_CYCLES 172 // TODO: Approximation (168 to 291 dots (40 to 60 µs) depending on sprite count)
 
 #define VIEW_PORT_WIDTH 160
 #define TILE_MAP_WIDTH 32
@@ -23,6 +25,10 @@ uint8_t window[TILE_BYTES * 32 * 32];
 
 uint16_t line_cycle_counter = 0;
 
+uint8_t mode;
+uint8_t stat_int_line = 0x0; // stat interrupt line
+uint8_t stat_interrupt = 0x0;
+
 uint8_t tile_data_area() { return (*lcdc & 0x10) != 0; }
 uint8_t bg_tile_map_area() { return (*lcdc & 0x8) != 0; }
 uint8_t bg_window_enable() { return (*lcdc & 0x1) != 0; }
@@ -34,6 +40,61 @@ void ppu_new_frame()
     line_cycle_counter = 0;
 }
 
+uint8_t lcdc_stat_interrupt()
+{
+    if(stat_interrupt)
+    {
+        stat_interrupt = 0;
+        return 1;
+    }
+    else
+        return 0;
+}
+
+uint8_t get_stat_int_line()
+{
+    if((*lcdc_stat) & (0x1 << 0x6) && (*lcdc_stat) & (0x1 << 0x2)) // ly == lyc
+        return 1;
+
+    if((*lcdc_stat) & (0x1 << 0x5) && mode == 2) // OAM search
+        return 1;
+
+    if((*lcdc_stat) & (0x1 << 0x4) && mode == 1) // VBlank
+        return 1;
+
+    if((*lcdc_stat) & (0x1 << 0x3) && mode == 0) // HBlank
+        return 1;
+
+    return 0;
+}
+
+void set_stat()
+{
+    // (*lcdc_stat) = (*lcdc_stat) & ~(0x1 << 0x2) | ((*ly == *lyc) << 0x2);
+    if(*ly == *lyc)
+        (*lcdc_stat) |= (0x1 << 0x2);
+    else
+        (*lcdc_stat) &= ~(0x1 << 0x2);
+
+    uint8_t mode;
+    if(*ly >= NLINES)
+        mode = 1;
+    else if(line_cycle_counter < OAM_SEARCH_CYCLES)
+        mode = 2;
+    else if(line_cycle_counter < OAM_SEARCH_CYCLES + MEM_READ_CYCLES)
+        mode = 3;
+    else
+        mode = 0;
+
+    // Set lcdc_stat bits 0 and 1 equal to bits 0 and 1 from mode
+    (*lcdc_stat) &= ~0x2;
+    (*lcdc_stat) |= mode;
+
+    // Enable interrupt if there is a rising edge in the stat interrupt line
+    uint8_t new_stat_int_line = get_stat_int_line();
+    if(new_stat_int_line == 1 && stat_int_line == 0) stat_interrupt = 1;
+    stat_int_line = new_stat_int_line;
+}
 
 void draw_tiles()
 {
@@ -145,4 +206,6 @@ void update_ppu(uint8_t cycles)
         else
             (*ly)++;
     }
+
+    set_stat();
 }
