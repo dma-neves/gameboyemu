@@ -191,10 +191,6 @@ void update_ppu(uint8_t cycles)
     {
         line_cycle_counter -= LINE_CYCLES;
 
-        // Set VBLANK interrupt flag
-        if(*ly == NLINES)
-            (*intf) |= 0x1;
-
         if(*ly < NLINES)
             draw_line();
         
@@ -206,6 +202,12 @@ void update_ppu(uint8_t cycles)
         else
             (*ly)++;
     }
+
+    // Set VBLANK interrupt flag
+    if(*ly >= NLINES)
+        (*intf) |= 0x1;
+    else
+        (*intf) &= ~0x1;
 
     set_stat();
 }

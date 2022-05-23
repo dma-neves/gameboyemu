@@ -55,7 +55,7 @@ int mmu_write(uint16_t address, uint8_t byte)
     {
         printf("Boot terminated\n");
         // TODO: remove debug
-        set_debug(1);
+        //set_debug(1);
     }
 
     if(address == BOOT_OFF_ADR && memory[address] == 0x1)

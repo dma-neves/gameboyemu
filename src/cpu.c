@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "memory.h"
+#include "ppu.h"
 
 /* -------------- data -------------- */
 
@@ -244,7 +245,7 @@ uint8_t* get_aligned_register(uint8_t opcode)
 //     return get_register( get_aligned_register(opcode) );
 // }
 
-/* -------------- 16 bit load instructions -------------- */
+/* -------------- stack operations -------------- */
 
 void push_u16(uint16_t value)
 {
@@ -259,6 +260,16 @@ uint16_t pop_u16()
     mmu_read(++cpu.sp, &low);
     mmu_read(++cpu.sp, &high);
     return (uint16_t)(high << 0x8) | (uint16_t)low;
+}
+
+void ld_hl_sp_offset(int8_t offset)
+{
+    set_zflag(0);
+    set_nflag(0);
+    set_hflag( (cpu.sp & 0xF) + (offset & 0xF) > 0xF );
+    set_cflag( (cpu.sp & 0xFF) + (uint16_t)offset > 0xFF );
+
+    cpu.hl = cpu.sp+offset;
 }
 
 /* -------------- 8 bit arithmetic -------------- */
@@ -360,6 +371,16 @@ void dec_u16_register(uint16_t* r)
     (*r)--;
 }
 
+void add_hl_u16(uint16_t w)
+{
+    // set_zflag(); Not affected
+    set_nflag(0);
+    set_hflag( (cpu.hl & 0x7FF) + (w & 0x7FF) > 0x7FF ); // Set if overflow from bit 11
+    set_cflag( (uint32_t)cpu.hl + (uint32_t)w > 0xFFFF );
+
+    cpu.hl += w;
+}
+
 /* -------------- Single-bit Operation instructions -------------- */
 
 // Test bit bitn in register
@@ -391,27 +412,27 @@ void set_bit(uint8_t* reg, uint8_t bitn)
 // Rotate left circular
 void rlc(uint8_t* reg)
 {
-    uint8_t byte = get_register(reg);
-    byte = (byte << 0x1) | (byte >> 0x7);
+    uint8_t oldbyte = get_register(reg);
+    uint8_t byte = (oldbyte << 0x1) | (oldbyte >> 0x7);
     set_register(reg, byte);
 
     set_zflag(byte == 0);
     set_nflag(0);
     set_hflag(0);
-    set_cflag(byte & 0x1);
+    set_cflag(oldbyte & 0x80);
 }
 
 // Rotate right circular
 void rrc(uint8_t* reg)
 {
-    uint8_t byte = get_register(reg);
-    byte = (byte >> 0x1) | (byte << 0x7);
+    uint8_t oldbyte = get_register(reg);
+    uint8_t byte = (oldbyte >> 0x1) | (oldbyte << 0x7);
     set_register(reg, byte);
 
     set_zflag(byte == 0);
     set_nflag(0);
     set_hflag(0);
-    set_cflag(byte & 0x80);
+    set_cflag(oldbyte & 0x1);
 }
 
 // Rotate left through carry
@@ -427,20 +448,6 @@ void rl(uint8_t* reg)
     set_cflag(oldbyte & 0x80);
 }
 
-// Rotate A left through carry
-// Note: Contrary to RL, RLA does not affect the zero flag
-void rla()
-{
-    uint8_t oldbyte = cpu.a;
-    uint8_t byte = (oldbyte << 0x1) | cflag();
-    cpu.a = byte;
-
-    set_zflag(byte == 0);
-    set_nflag(0);
-    set_hflag(0);
-    // set_cflag(oldbyte & 0x80); Not affected
-}
-
 // Rotate right through carry
 void rr(uint8_t* reg)
 {
@@ -449,6 +456,62 @@ void rr(uint8_t* reg)
     set_register(reg, byte);
 
     set_zflag(byte == 0);
+    set_nflag(0);
+    set_hflag(0);
+    set_cflag(oldbyte & 0x0);
+}
+
+
+// Rotate A left through carry
+// Note: Contrary to RL, RLA does not affect the zero flag
+void rla()
+{
+    // TODO: Verify flags
+
+    uint8_t oldbyte = cpu.a;
+    uint8_t byte = (oldbyte << 0x1) | cflag();
+    cpu.a = byte;
+
+    set_zflag(0);
+    set_nflag(0);
+    set_hflag(0);
+    set_cflag(oldbyte & 0x80);
+}
+
+// Rotate A left circular
+void rlca()
+{
+    uint8_t oldbyte = cpu.a;
+    uint8_t byte = (oldbyte << 0x1) | (oldbyte >> 0x7);
+    cpu.a = byte;
+
+    set_zflag(0);
+    set_nflag(0);
+    set_hflag(0);
+    set_cflag(oldbyte & 0x80);
+}
+
+// Rotate A right circular
+void rrca()
+{
+    uint8_t oldbyte = cpu.a;
+    uint8_t byte = (oldbyte >> 0x1) | (oldbyte << 0x7);
+    cpu.a = byte;
+
+    set_zflag(0);
+    set_nflag(0);
+    set_hflag(0);
+    set_cflag(oldbyte & 0x1);
+}
+
+// Rotate A right through carry
+void rra()
+{
+    uint8_t oldbyte = cpu.a;
+    uint8_t byte = (oldbyte >> 0x1) | (cflag() << 0x7);
+    cpu.a = byte;
+
+    set_zflag(0);
     set_nflag(0);
     set_hflag(0);
     set_cflag(oldbyte & 0x0);
@@ -524,6 +587,15 @@ void jump(uint16_t address)
     cpu.pc = address;
 }
 
+void cond_jump(uint8_t cond, uint16_t address)
+{
+    if(cond)
+    {
+        extra_cycles += 4;
+        jump(address);
+    }
+}
+
 void call(uint16_t address)
 {
     push_u16(cpu.pc); // Push address of next instruction
@@ -545,10 +617,43 @@ void ret()
     cpu.pc = pop_u16();
 }
 
+void cond_ret(uint8_t cond)
+{
+    if(cond)
+    {
+        ret();
+        extra_cycles += 12; // TODO: verify if 12 is correct
+    }
+}
+
 void reti()
 {
     cpu.ime = 1;
     ret();
+}
+
+/* -------------- miscellaneous -------------- */
+
+void scf()
+{
+    // set_zflag(); Not affected
+    set_cflag(1);
+    set_hflag(0);
+    set_cflag(0);
+}
+
+void cpl()
+{
+    cpu.a = ~cpu.a;
+    // set_zflag(); Not affected
+    set_nflag(1);
+    set_hflag(1);
+    // set_cflag(); Not affected
+}
+
+void rst(uint16_t address)
+{
+    call(address);
 }
 
 /* -------------- decode & execute -------------- */
@@ -570,45 +675,63 @@ void decode_exec(uint8_t opcode)
             case 0x04: inc_u8_register(&cpu.b); break; // INC B
             case 0x05: dec_u8_register(&cpu.b); break; // DEC B
             case 0x06: cpu.b = read_u8_param(); break; // LD B,u8
-
+            case 0x07: rlca(); break; // RLCA
             case 0x08: mmu_write_u16(read_u16_param(), cpu.sp); break; // LD (u16),SP
-
+            case 0x09: add_hl_u16(cpu.bc); break; // ADD HL,BC
+            case 0x0A: mmu_read(cpu.bc, &cpu.a); break; // LD A,(BC)
             case 0x0B: dec_u16_register(&cpu.bc); break; // DEC BC
             case 0x0C: inc_u8_register(&cpu.c); break; // INC C
             case 0x0D: dec_u8_register(&cpu.c); break; // DEC C
-
             case 0x0E: cpu.c = read_u8_param(); break; // LD C,u8
-
+            case 0x0F: rrca(); break; // RRCA
+            // TODO: case 0x10: break; // STOP
             case 0x11: cpu.de = read_u16_param(); break; // LD DE,u16
-
+            case 0x12: mmu_write(cpu.de, cpu.a); break; // LD (DE),A
             case 0x13: inc_u16_register(&cpu.de); break; // INC DE
-
+            case 0x14: inc_u8_register(&cpu.d); break; // INC D
             case 0x15: dec_u8_register(&cpu.d); break; // DEC D
             case 0x16: cpu.d = read_u8_param(); break; // LD D,u8
             case 0x17: rla(); break; // RLA
-
             case 0x18: jump_relative(1, read_i8_param()); break; // JR i8
-
+            case 0x19: add_hl_u16(cpu.de); break; // ADD HL,DE
             case 0x1A: mmu_read(cpu.de, &cpu.a); break; // LD A,(DE)
-
+            case 0x1B: dec_u16_register(&cpu.de); break; // DEC DE
+            case 0x1C: inc_u8_register(&cpu.e); break; // INC E
             case 0x1D: dec_u8_register(&cpu.e); break; // DEC E
             case 0x1E: cpu.e = read_u8_param(); break; // LD E,u8
-
+            case 0x1F: rra(); break; // RRA
             case 0x20: jump_relative(!zflag(), read_i8_param()); break; // JR NZ,i8
             case 0x21: cpu.hl = read_u16_param(); break; // LD HL,u16
             case 0x22: mmu_write(cpu.hl++, cpu.a); break; // LD (HL+),A
             case 0x23: inc_u16_register(&cpu.hl); break; // INC HL
             case 0x24: inc_u8_register(&cpu.h); break; // INC H
-
+            case 0x25: dec_u8_register(&cpu.h); break; // DEC H
+            case 0x26: cpu.h = read_u8_param(); break; // LD H,u8
+            // TODO: case 0x27: break; // DAA
             case 0x28: jump_relative(zflag(), read_i8_param()); break; // JR Z,i8
-
+            case 0x29: add_hl_u16(cpu.hl); break; // ADD HL,HL
+            case 0x2A: mmu_read(cpu.hl++, &cpu.a); break; // LD A,(HL+)
+            case 0x2B: dec_u16_register(&cpu.hl); break; // DEC HL
+            case 0x2C: inc_u8_register(&cpu.l); break; // INC L
+            case 0x2D: dec_u8_register(&cpu.l); break; // DEC L
             case 0x2E: cpu.l = read_u8_param(); break; // LD L,u8
-
+            case 0x2F: cpl(); break; // CPL
+            case 0x30: jump_relative(!cflag(), read_i8_param()); break; // JR NC,i8
             case 0x31: cpu.sp = read_u16_param(); break; // LD SP,u16
             case 0x32: mmu_write(cpu.hl--, cpu.a); break; // LD (HL-),A
-
+            case 0x33: inc_u16_register(&cpu.sp); break; // INC SP
+            case 0x34: inc_u8_register(REG_HL); break; // INC (HL)
+            case 0x35: dec_u8_register(REG_HL); break; // DEC (HL)
+            case 0x36: mmu_write(cpu.hl, read_u8_param()); break; // LD (HL),u8
+            case 0x37: scf(); break; // SCF
+            case 0x38: jump_relative(cflag(), read_i8_param()); break; // JR C,i8
+            case 0x39: add_hl_u16(cpu.sp); break; // ADD HL,SP
+            case 0x3A: mmu_read(cpu.hl--, &cpu.a); break; // LD A,(HL-)
+            case 0x3B: dec_u16_register(&cpu.sp); break; // DEC SP
+            case 0x3C: inc_u8_register(&cpu.a); break; // INC A
             case 0x3D: dec_u8_register(&cpu.a); break; // DEC A
             case 0x3E: cpu.a = read_u8_param(); break; // LD A,u8
+            // TODO: case 0x3F:  break; // CCF
 
             default: opcode_not_implemented(opcode); break;
         }   
@@ -662,30 +785,57 @@ void decode_exec(uint8_t opcode)
     {
         switch (opcode)
         {
+            case 0xC0: cond_ret(!zflag()); break; // RET NZ
             case 0xC1: cpu.bc = pop_u16(); break; // POP BC
-
+            case 0xC2: cond_jump(!zflag(), read_u16_param()); break; // JP NZ,u16
             case 0xC3: jump(read_u16_param()); break; // JP u16
-
+            case 0xC4: cond_call(!zflag(), read_u16_param()); break; // CALL NZ,u16
             case 0xC5: push_u16(cpu.bc); break; // PUSH BC
+            case 0xC6: add_u8(read_u8_param()); break; // ADD A,u8
 
+            case 0xC8: cond_ret(zflag()); break; // RET Z
             case 0xC9: ret(); break; // RET
 
+            case 0xCA: cond_jump(zflag(), read_u16_param()); break; // JP Z,u16
             case 0xCB: /* handled before */; break; // PREFIX CB
             case 0xCC: cond_call(zflag(), read_u16_param()); break; // CALL Z,u16
             case 0xCD: call( read_u16_param() ); break; // CALL u16
+            case 0xCE: adc_u8(read_u8_param()); break; // ADC A,u8
 
+            case 0xD0: cond_ret(!cflag()); break; // RET NC
+            case 0xD1: cpu.de = pop_u16(); break; // POP DE
+
+            case 0xD5: push_u16(cpu.de); break; // PUSH DE
+            case 0xD6: sub_u8(read_u8_param()); break; // SUB A,u8
+
+            case 0xD8: cond_ret(cflag()); break; // RET C
             case 0xD9: reti(); break; // RETI
 
             case 0xE0: mmu_write(0xFF00 + read_u8_param(), cpu.a); break; // LD (FF00+u8),A
+            case 0xE1: cpu.hl = pop_u16(); break; // POP HL
 
             case 0xE2: mmu_write(0xFF00 + cpu.c, cpu.a); break; // LD (FF00+C),A
 
+            case 0xE5: push_u16(cpu.hl); break; // PUSH HL
+            case 0xE6: and_u8(read_u8_param()); break; // AND A,u8
+
+            case 0xE9: jump(cpu.hl); break; // JP HL
+
             case 0xEA: mmu_write(read_u16_param(), cpu.a); break; // LD (u16),A
 
+            case 0xEF: rst(0x28); break; // RST 28h
+
             case 0xF0: mmu_read(0xFF00 + read_u8_param(), &cpu.a); break; // LD A,(FF00+u8)
+            case 0xF1: cpu.af = pop_u16(); break; // POP AF
 
             case 0xF3: cpu.ime = 0; break; // DI
 
+            case 0xF5: push_u16(cpu.af); break; // PUSH AF
+            case 0xF6: or_u8(read_u8_param()); break; // OR A,u8
+
+            case 0xF8: ld_hl_sp_offset(read_i8_param()); break; // LD HL,SP+i8
+            case 0xF9: cpu.sp = cpu.hl; break; // LD SP,HL
+            case 0xFA: mmu_read(read_u16_param(), &cpu.a); break; // LD A,(u16)    
             case 0xFB: cpu.ime = 1; break; // EI TODO: Should be delayed by one instruction
 
             case 0xFE: compare_u8(read_u8_param()); break; // CP A,u8
