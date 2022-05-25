@@ -163,8 +163,8 @@ void draw_tiles()
 
         // Color depends on palette assigned by BGP 0xFF47
         uint8_t color_bit_0, color_bit_1, color;
-        color_bit_0 = ( (*bgp) >> color_index*2) & 0x1;
-        color_bit_1 = ( (*bgp) >> color_index*2+1) & 0x1;
+        color_bit_0 = ( (*bgp) >> (color_index*2) ) & 0x1;
+        color_bit_1 = ( (*bgp) >> (color_index*2+1) ) & 0x1;
         color = color_bit_0 | (color_bit_1 << 0x1);
 
         set_pixel(i, *ly, color);

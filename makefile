@@ -4,7 +4,7 @@ _DEPS=main.c cpu.h memory.h timer.h ppu.h ui.h
 DEPS=$(patsubst %,src/%,$(_DEPS))
 
 CC=gcc
-CFLAGS=-I src -g
+CFLAGS=-I src -g -Wall -Wformat
 
 ODIR=obj
 _OBJ=main.o cpu.o memory.o timer.o ppu.o ui.o

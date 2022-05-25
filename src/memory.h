@@ -53,7 +53,7 @@ void reset_memory();
 int mmu_write(uint16_t address, uint8_t byte);
 void mmu_read(uint16_t address, uint8_t* dest);
 
-int mmu_write_u16(uint16_t address, uint16_t byte);
+void mmu_write_u16(uint16_t address, uint16_t byte);
 void mmu_read_u16(uint16_t address, uint16_t* dest);
 
 #endif

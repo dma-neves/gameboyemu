@@ -18,6 +18,8 @@ uint16_t get_tima_cycles()
         case 1: return 16;
         case 2: return 64;
         case 3: return 256;
+
+        default: return 0;
     }
 }
 
