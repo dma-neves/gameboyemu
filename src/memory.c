@@ -6,6 +6,8 @@
 
 #include "cpu.h"
 
+//#define DEBUG
+
 uint8_t memory[MEM_SIZE];
 
 uint8_t* tdiv = memory + DIV_ADR;
@@ -55,7 +57,10 @@ int mmu_write(uint16_t address, uint8_t byte)
     {
         printf("Boot terminated\n");
         // TODO: remove debug
-        set_debug(1);
+
+        #ifdef DEBUG
+            set_debug(1);
+        #endif
     }
 
     if(address == BOOT_OFF_ADR && memory[address] == 0x1)
@@ -83,6 +88,14 @@ void mmu_write_u16(uint16_t address, uint16_t byte)
 void mmu_read(uint16_t address, uint8_t* dest)
 {
     // TODO: When the PPU is accessing some video-related memory, that memory is inaccessible to the CPU: writes are ignored, and reads return garbage values (usually $FF).
+
+    #ifdef DEBUG
+        if(address == LY_ADR)
+        {
+            *dest =0x90;
+            return;
+        }
+    #endif
 
     if(address <= 0x00FF && !memory[BOOT_OFF_ADR])
         *dest = bootrom[address];

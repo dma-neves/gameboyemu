@@ -88,18 +88,17 @@ void set_debug(uint8_t value)
     debug_enable = value;
 }
 
-void print_cpu_state_wait()
+void print_cpu_state()
 {
-    printf("cpu state:\n");
-    printf("pc: %x\n", cpu.pc);
-    printf("sp: %x\n", cpu.sp);
+    printf("cpu state:\t");
+    printf("pc: %x\t", cpu.pc);
+    printf("sp: %x\t", cpu.sp);
 
-    printf("af: %x a: %x f: %x\n", cpu.af, cpu.a, cpu.f);
-    printf("bc: %x b: %x c: %x\n", cpu.bc, cpu.b, cpu.c);
-    printf("de: %x d: %x e: %x\n", cpu.de, cpu.d, cpu.e);
-    printf("hl: %x h: %x l: %x\n", cpu.hl, cpu.h, cpu.l);
-    printf("\n\n");
-    getchar();
+    printf("af: %x a: %x f: %x\t", cpu.af, cpu.a, cpu.f);
+    printf("bc: %x b: %x c: %x\t", cpu.bc, cpu.b, cpu.c);
+    printf("de: %x d: %x e: %x\t", cpu.de, cpu.d, cpu.e);
+    printf("hl: %x h: %x l: %x\t", cpu.hl, cpu.h, cpu.l);
+    printf("\n");
 }
 
 /* -------------- cpu step -------------- */
@@ -118,8 +117,13 @@ uint8_t step()
         uint8_t opcode;
         mmu_read(cpu.pc++, &opcode);
 
-        // if(debug_counter >= 8238)
-        //     print_cpu_state_wait();
+        if(debug_enable) {
+            print_cpu_state();
+            debug_counter++;
+        }
+
+        // if(debug_counter >= )
+        //     exit(1);
 
         if(opcode == 0xCB)
         {
@@ -415,7 +419,7 @@ void add_hl_u16(uint16_t w)
 {
     // set_zflag(); Not affected
     set_nflag(0);
-    set_hflag( (cpu.hl & 0x7FF) + (w & 0x7FF) > 0x7FF ); // Set if overflow from bit 11
+    set_hflag( (cpu.hl & 0xFFF) + (w & 0xFFF) > 0xFFF ); // Set if overflow from bit 11
     set_cflag( (uint32_t)cpu.hl + (uint32_t)w > 0xFFFF );
 
     cpu.hl += w;
@@ -498,7 +502,7 @@ void rr(uint8_t* reg)
     set_zflag(byte == 0);
     set_nflag(0);
     set_hflag(0);
-    set_cflag(oldbyte & 0x0);
+    set_cflag(oldbyte & 0x1);
 }
 
 
@@ -554,7 +558,7 @@ void rra()
     set_zflag(0);
     set_nflag(0);
     set_hflag(0);
-    set_cflag(oldbyte & 0x0);
+    set_cflag(oldbyte & 0x1);
 }
 
 // Shift left into carry LSB set to 0
@@ -598,8 +602,9 @@ void srl(uint8_t* reg)
 
 void swap(uint8_t* reg)
 {
-    uint8_t low = get_register(reg) & 0xF;
-    uint8_t high = get_register(reg) & 0xF0;
+    uint8_t reg_value = get_register(reg);
+    uint8_t low = reg_value & 0xF;
+    uint8_t high = reg_value & 0xF0;
     uint16_t byte = (low << 0x4) | (high >> 0x4);
     set_register(reg, byte);
 }
@@ -704,31 +709,26 @@ void ccf()
     set_cflag(!cflag());
 }
 
-void daa()
-{
-    // DAA implemetation based on jgilchrist's: https://github.com/jgilchrist/gbemu
+ void daa()
+ {
+    uint16_t correction = 0;
 
-    uint8_t reg = cpu.a;
+    if (hflag() || (!nflag() && (cpu.a & 0xF) > 9))
+        correction |= 0x6;
 
-    uint16_t correction = cflag() ? 0x60 : 0x00;
-
-    if(hflag() || (!nflag() && ((reg & 0x0F) > 9)))
-        correction |= 0x06;
-
-    if(cflag() || (!nflag() && (reg > 0x99)))
+    if (cflag() || (!nflag() && cpu.a > 0x99)) {
+        
         correction |= 0x60;
-
-    if(nflag())
-        reg = (uint8_t)(reg - correction);
-    else
-        reg = (uint8_t)(reg + correction);
-
-    if(((correction << 2) & 0x100) != 0)
         set_cflag(1);
+    }
+    else
+        set_cflag(0);
 
+    cpu.a += nflag() ? -correction : correction;
+
+    set_zflag(!cpu.a);
     set_hflag(0);
-    set_zflag(0);
-    cpu.a = reg;
+
 }
 
 /* -------------- decode & execute -------------- */
