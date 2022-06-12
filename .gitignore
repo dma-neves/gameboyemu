@@ -2,3 +2,4 @@
 .vscode
 *.gb
 emu
+debug_output/

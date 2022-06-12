@@ -150,20 +150,25 @@ void call(uint16_t address);
 
 int handle_interrupts()
 {
+    // if ime is set to false, interrupts don't occur
     if(!cpu.ime)
         return 0;
 
+    // Check all 5 interrupt sources sequentally
     uint8_t interrupt_called = 0;
     for(int i = 0; i <= 4 && !interrupt_called; i++)
     {
+        // Check if both interrupt enable and interrupt flag are set for the given source
         if(((*ie) >> i) & 0x1 && ((*intf) >> i) & 0x1)
         {
+            // For source 1 (LCDC STAT) check interrupt flag given by the ppu
             if(i != 0x1 || lcdc_stat_interrupt())
             {
                 interrupt_called = 1;
                 cpu.ime = 0;
                 cpu.hlt = 0;
                 
+                // Clear interrupt flag associated with the given source
                 uint8_t bitmask = ~(0x1 << i);
                 (*intf) &= bitmask;
 
@@ -298,7 +303,7 @@ void ld_hl_sp_offset(int8_t offset)
     set_zflag(0);
     set_nflag(0);
     set_hflag( (cpu.sp & 0xF) + (offset & 0xF) > 0xF );
-    set_cflag( (cpu.sp & 0xFF) + (int16_t)offset > 0xFF ); // TODO: verify (signed offset)
+    set_cflag( (cpu.sp & 0xFF) + (uint16_t)offset > 0xFF ); // TODO: verify (signed offset)
 
     cpu.hl = cpu.sp+offset;
 }
@@ -308,7 +313,7 @@ void add_sp_i8(int8_t value)
     set_zflag(0);
     set_nflag(0);
     set_hflag( (cpu.sp & 0xF) + (value & 0xF) > 0xF );
-    set_cflag( (cpu.sp & 0xFF) + (int16_t)value > 0xFF ); // TODO: verify (signed value)
+    set_cflag( (cpu.sp & 0xFF) + (uint16_t)value > 0xFF ); // TODO: verify (signed value)
 
     cpu.sp += value;
 }

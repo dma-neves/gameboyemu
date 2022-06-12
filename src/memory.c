@@ -6,8 +6,6 @@
 
 #include "cpu.h"
 
-//#define DEBUG
-
 uint8_t memory[MEM_SIZE];
 
 uint8_t* tdiv = memory + DIV_ADR;
@@ -55,8 +53,9 @@ int mmu_write(uint16_t address, uint8_t byte)
 {
     if(address == BOOT_OFF_ADR)
     {
-        printf("Boot terminated\n");
-        // TODO: remove debug
+        #ifndef DEBUG
+            printf("Boot terminated\n");
+        #endif
 
         #ifdef DEBUG
             set_debug(1);

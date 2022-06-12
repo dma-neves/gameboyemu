@@ -62,12 +62,16 @@ int main(int argc, char** argv)
     }
 
     reset_system();
-    printf("Loading rom\n");
+    #ifndef DEBUG
+        printf("Loading rom\n");
+    #endif
     load_rom(argv[1]);
-    printf("Initializing UI\n");
+    #ifndef DEBUG
+        printf("Initializing UI\n");
+    #endif
     init_ui();
 
-    printf("Starting boot sequence\n");
+    //rintf("Starting boot sequence\n");
 
     long cycles = 0;
     double clk = 0;

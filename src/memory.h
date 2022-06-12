@@ -1,6 +1,8 @@
 #ifndef _MEMORY
 #define _MEMORY
 
+//#define DEBUG
+
 #include <stdint.h>
 
 #define MEM_SIZE 0x10000
