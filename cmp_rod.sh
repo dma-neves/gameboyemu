@@ -1,1 +1,1 @@
-./emu roms/blargg/individual/02-interrupts.gb > debug_output/daveout
+./emu roms/blargg/individual/04-op\ r\,imm.gb > debug_output/daveout

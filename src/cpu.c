@@ -307,7 +307,7 @@ void ld_hl_sp_offset(int8_t offset)
     set_zflag(0);
     set_nflag(0);
     set_hflag( (cpu.sp & 0xF) + (offset & 0xF) > 0xF );
-    set_cflag( (cpu.sp & 0xFF) + (uint16_t)offset > 0xFF ); // TODO: verify (signed offset)
+    set_cflag( (cpu.sp & 0xFF) + (uint16_t)(uint8_t)offset > 0xFF ); // TODO: verify (signed offset)
 
     cpu.hl = cpu.sp+offset;
 }
@@ -317,7 +317,7 @@ void add_sp_i8(int8_t value)
     set_zflag(0);
     set_nflag(0);
     set_hflag( (cpu.sp & 0xF) + (value & 0xF) > 0xF );
-    set_cflag( (cpu.sp & 0xFF) + (uint16_t)value > 0xFF ); // TODO: verify (signed value)
+    set_cflag( (cpu.sp & 0xFF) + (uint16_t)(uint8_t)value > 0xFF ); // TODO: verify (signed value)
 
     cpu.sp += value;
 }
