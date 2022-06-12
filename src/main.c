@@ -71,7 +71,9 @@ int main(int argc, char** argv)
     #endif
     init_ui();
 
-    //rintf("Starting boot sequence\n");
+    #ifndef DEBUG
+        printf("Starting boot sequence\n");
+    #endif
 
     long cycles = 0;
     double clk = 0;

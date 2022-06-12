@@ -139,6 +139,10 @@ uint8_t step()
             cycles = op_cycles[opcode] + extra_cycles;
         }
     }
+    else
+    {
+        cycles = 4; // TODO: Check this
+    }
 
     cycles += handle_interrupts();
     return cycles;
@@ -150,29 +154,29 @@ void call(uint16_t address);
 
 int handle_interrupts()
 {
-    // if ime is set to false, interrupts don't occur
-    if(!cpu.ime)
-        return 0;
-
     // Check all 5 interrupt sources sequentally
     uint8_t interrupt_called = 0;
     for(int i = 0; i <= 4 && !interrupt_called; i++)
     {
         // Check if both interrupt enable and interrupt flag are set for the given source
-        if(((*ie) >> i) & 0x1 && ((*intf) >> i) & 0x1)
+        if((*ie) & (*intf) & (0x1 << i))
         {
             // For source 1 (LCDC STAT) check interrupt flag given by the ppu
             if(i != 0x1 || lcdc_stat_interrupt())
             {
                 interrupt_called = 1;
-                cpu.ime = 0;
                 cpu.hlt = 0;
-                
-                // Clear interrupt flag associated with the given source
-                uint8_t bitmask = ~(0x1 << i);
-                (*intf) &= bitmask;
 
-                call(interrupt_vector[i]);
+                // if ime is set to false, interrupts don't occur
+                if(cpu.ime)
+                {
+                    cpu.ime = 0;
+                    // Clear interrupt flag associated with the given source
+                    uint8_t bitmask = ~(0x1 << i);
+                    (*intf) &= bitmask;
+
+                    call(interrupt_vector[i]);
+                }
             }
         }
     }
