@@ -86,6 +86,12 @@ void mmu_write_u16(uint16_t address, uint16_t byte)
 
 void mmu_read(uint16_t address, uint8_t* dest)
 {
+    if(address == IO_REGISTERS_ADR)
+    {
+        *dest = 0xFF;
+        return;
+    }
+
     // TODO: When the PPU is accessing some video-related memory, that memory is inaccessible to the CPU: writes are ignored, and reads return garbage values (usually $FF).
 
     #ifdef DEBUG
