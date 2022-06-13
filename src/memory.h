@@ -1,7 +1,7 @@
 #ifndef _MEMORY
 #define _MEMORY
 
-#define DEBUG
+//#define DEBUG
 
 #include <stdint.h>
 

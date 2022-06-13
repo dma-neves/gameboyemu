@@ -326,12 +326,12 @@ void add_sp_i8(int8_t value)
 
 void compare_u8(uint8_t b)
 {
-    uint8_t cp = cpu.a-b;
+    uint8_t result = cpu.a-b;
 
-    set_zflag(cp == 0);
+    set_zflag(result == 0);
     set_nflag(1);
-    set_hflag( (cp & 0xF) + (b & 0xF) > 0xF );
-    set_cflag( cp > cpu.a );
+    set_hflag( (result & 0xF) + (b & 0xF) > 0xF );
+    set_cflag( (uint16_t)result + (uint16_t)b > 0xFF );
 }
 
 void add_u8(uint8_t b)
@@ -347,8 +347,13 @@ void add_u8(uint8_t b)
 
 void adc_u8(uint8_t b)
 {
-    uint8_t b_carry = b + cflag();
-    add_u8(b_carry); // TODO: Verify
+    uint8_t result = cpu.a + b + cflag();
+    set_zflag(result == 0);
+    set_nflag(0);
+    set_hflag( (cpu.a & 0xF) + (b & 0xF) + cflag() > 0xF );
+    set_cflag( (uint16_t)cpu.a + (uint16_t)b + (uint16_t)cflag() > 0xFF );
+
+    cpu.a = result;
 }
 
 void sub_u8(uint8_t b)
@@ -359,8 +364,14 @@ void sub_u8(uint8_t b)
 
 void sbc_u8(uint8_t b)
 {
-    uint8_t b_carry = b + cflag(); 
-    sub_u8(b_carry); // TODO: Verify
+    uint8_t result = cpu.a - b - cflag();
+
+    set_zflag(result == 0);
+    set_nflag(1);
+    set_hflag( (result & 0xF) + (b & 0xF) + cflag() > 0xF );
+    set_cflag( (uint16_t)result + (uint16_t)b + cflag() > 0xFF );
+
+    cpu.a = result;
 }
 
 void and_u8(uint8_t b)
