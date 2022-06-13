@@ -330,8 +330,8 @@ void compare_u8(uint8_t b)
 
     set_zflag(result == 0);
     set_nflag(1);
-    set_hflag( (result & 0xF) + (b & 0xF) > 0xF );
-    set_cflag( (uint16_t)result + (uint16_t)b > 0xFF );
+    set_hflag( (int16_t)(cpu.a & 0xF) - (int16_t)(b & 0xF) < 0 );
+    set_cflag( (int16_t)cpu.a - (int16_t)b < 0 );
 }
 
 void add_u8(uint8_t b)
@@ -368,8 +368,8 @@ void sbc_u8(uint8_t b)
 
     set_zflag(result == 0);
     set_nflag(1);
-    set_hflag( (result & 0xF) + (b & 0xF) + cflag() > 0xF );
-    set_cflag( (uint16_t)result + (uint16_t)b + cflag() > 0xFF );
+    set_hflag( (int16_t)(cpu.a & 0xF) - (int16_t)(b & 0xF) - (int16_t)cflag() < 0 );
+    set_cflag( (int16_t)cpu.a - (int16_t)b - (int16_t)cflag() < 0 );
 
     cpu.a = result;
 }
@@ -627,6 +627,11 @@ void swap(uint8_t* reg)
     uint8_t high = reg_value & 0xF0;
     uint16_t byte = (low << 0x4) | (high >> 0x4);
     set_register(reg, byte);
+
+    set_zflag(byte == 0);
+    set_nflag(0);
+    set_hflag(0);
+    set_cflag(0);
 }
 
 /* -------------- jumps -------------- */
@@ -930,7 +935,7 @@ void decode_exec(uint8_t opcode)
             case 0xEF: rst(0x28); break; // RST 28h
             case 0xF0: mmu_read(0xFF00 + read_u8_param(), &cpu.a); break; // LD A,(FF00+u8)
             case 0xF1: pop_af(); break; // POP AF
-            case 0xF2: mmu_write(0xFF00 + cflag(), cpu.a); break; // LD A,(FF00+C)
+            case 0xF2: mmu_read(0xFF00 + cpu.c, &cpu.a); break; // LD A,(FF00+C) 
             case 0xF3: cpu.ime = 0; break; // DI
             case 0xF4: invalid(opcode); break; // invalid
             case 0xF5: push_af(); break; // PUSH AF
