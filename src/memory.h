@@ -27,6 +27,7 @@
 #define SCX_ADR 0xFF43
 #define LY_ADR 0xFF44
 #define LYC_ADR 0xFF45
+#define DMA_ADR 0xFF46
 #define BGP_ADR 0xFF47
 #define WY_ADR 0xFF4A
 #define WX_ADR 0xFF4B
@@ -49,9 +50,15 @@ extern uint8_t* windowy;
 extern uint8_t* bgp;
 extern uint8_t* ie;
 extern uint8_t* intf;
+extern uint8_t* dma;
 
 
 void reset_memory();
+void update_dma_transfer(uint8_t cycles);
+
+void lock_vram_oam();
+void free_vram_oam();
+
 int mmu_write(uint16_t address, uint8_t byte);
 void mmu_read(uint16_t address, uint8_t* dest);
 

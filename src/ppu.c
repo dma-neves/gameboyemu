@@ -12,6 +12,7 @@
 #define MEM_READ_CYCLES 172 // TODO: Approximation (168 to 291 dots (40 to 60 µs) depending on sprite count)
 
 #define VIEW_PORT_WIDTH 160
+#define VIEW_PORT_HEIGH NLINES
 #define TILE_MAP_WIDTH 32
 #define TILE_MAP_PIXEL_WIDTH 256
 #define TILE_MAP_PIXEL_HEIGHT 256
@@ -19,6 +20,9 @@
 #define TILE_BYTES 16
 #define TILE_WIDTH 8
 #define TILE_HEIGHT 8
+
+#define N_SPRITES 40 // Number of sprites
+#define MAX_SPL 10 // Max number of sprites drawn per line
 
 uint8_t background[TILE_BYTES * 32 * 32];
 uint8_t window[TILE_BYTES * 32 * 32];
@@ -29,9 +33,17 @@ uint8_t mode;
 uint8_t stat_int_line = 0x0; // stat interrupt line
 uint8_t stat_interrupt = 0x0;
 
-uint8_t tile_data_area() { return (*lcdc & 0x10) != 0; }
-uint8_t bg_tile_map_area() { return (*lcdc & 0x8) != 0; }
-uint8_t bg_window_enable() { return (*lcdc & 0x1) != 0; }
+
+/* -------------- LCD Control -------------- */
+
+uint8_t bg_window_enable()      { return (*lcdc & 0x01) != 0; }
+uint8_t obj_enable()      { return (*lcdc & 0x02) != 0; }
+uint8_t obj_size()              { return (*lcdc & 0x04) != 0; }
+uint8_t bg_tile_map_area()      { return (*lcdc & 0x08) != 0; }
+uint8_t tile_data_area()        { return (*lcdc & 0x10) != 0; }
+uint8_t window_enable()         { return (*lcdc & 0x20) != 0; }
+uint8_t window_tile_map_area()  { return (*lcdc & 0x40) != 0; }
+uint8_t lcd_enable()            { return (*lcdc & 0x80) != 0; }
 
 // TODO: possibly remove
 void ppu_new_frame()
@@ -96,31 +108,34 @@ void set_stat()
     stat_int_line = new_stat_int_line;
 }
 
-void draw_tiles()
+void draw_tiles(uint8_t scroll_x, uint8_t scroll_y, uint8_t offset_x, uint8_t offset_y, uint8_t tile_map_area_flag)
 {
-    if(!bg_window_enable())
-        return;
-
     // Tile map address depends on bg_tile_map_area flag
-    uint16_t tile_map_base_address = bg_tile_map_area() ? 0x9C00 : 0x9800;
+    uint16_t tile_map_base_address = tile_map_area_flag ? 0x9C00 : 0x9800;
 
     // Calculate pixel position taking into account the scx and scy offsets (viewport's position)
-    uint16_t pixel_y = ( (*ly) + (*scy) ) % TILE_MAP_PIXEL_HEIGHT;
+    uint16_t viewport_y = ( (*ly) + scroll_y ) % TILE_MAP_PIXEL_HEIGHT;
     
-    // TODO: Instead of iterating over every pixel, load chunks of 8 pixels every time
+    // TODO: Instead of iterating over every pixel, load chunks of 8 pixels
     for(uint16_t i = 0; i < VIEW_PORT_WIDTH; i++)
     {
-        uint16_t pixel_x = (i + (*scx) ) % TILE_MAP_PIXEL_WIDTH;
+        int16_t lcd_x = i+offset_x;
+        int16_t lcd_y = (*ly)+offset_y;
+
+        if(lcd_x < 0 || lcd_x >= VIEW_PORT_WIDTH || lcd_y < 0 || lcd_y >= VIEW_PORT_HEIGH)
+            continue;
+
+        uint16_t viewport_x = (i + scroll_x) % TILE_MAP_PIXEL_WIDTH;
 
         /* Select tile in tile map */
 
-        uint8_t tile_map_x = pixel_x / TILE_WIDTH;
-        uint8_t tile_map_y = pixel_y / TILE_HEIGHT;
+        uint8_t tile_map_x = viewport_x / TILE_WIDTH;
+        uint8_t tile_map_y = viewport_y / TILE_HEIGHT;
 
         /* Select pixel whthin tile */
 
-        uint8_t tile_x = pixel_x % TILE_WIDTH;
-        uint8_t tile_y = pixel_y % TILE_HEIGHT;
+        uint8_t tile_x = viewport_x % TILE_WIDTH;
+        uint8_t tile_y = viewport_y % TILE_HEIGHT;
 
         /* Fetch the tile number from the tile map */
 
@@ -167,25 +182,75 @@ void draw_tiles()
         color_bit_1 = ( (*bgp) >> (color_index*2+1) ) & 0x1;
         color = color_bit_0 | (color_bit_1 << 0x1);
 
-        set_pixel(i, *ly, color);
+        set_pixel(lcd_x, lcd_y, color);
     }
+}
+
+void draw_bg_window_tiles()
+{
+    // Draw background
+    draw_tiles(*scx, *scy, 0, 0, bg_tile_map_area());
+
+    // Draw window
+    if(window_enable())
+        draw_tiles(0, 0, (*windowx)-7, *windowy, window_tile_map_area());
 }
 
 void draw_sprites()
 {
-    // TODO: later
+    // note: color depends on pallete assigned by OBP0 0xFF48 and OBP1 0xFF49
 
-    // Color depends on pallete assigned by OBP0 0xFF48 and OBP1 0xFF49
+    uint8_t obj_height = obj_size() ? 16 : 8;
+
+    uint16_t oam_adr = 0xFE00;
+    uint8_t drawn_sprites = 0;
+    for(uint8_t spriten; spriten < N_SPRITES && drawn_sprites < MAX_SPL; spriten++)
+    {
+        uint8_t pos_y;
+        uint8_t pos_x;
+        uint8_t tile_idx;
+        uint8_t flags;
+
+        mmu_read(oam_adr++, &pos_y);
+        mmu_read(oam_adr++, &pos_x);
+        mmu_read(oam_adr++, &tile_idx);
+        mmu_read(oam_adr++, &flags);
+
+        pos_y -= 16; // Pos y offsetted 16 pixels in OAM
+        pos_x -= 8;  // Pos x offsetted 8 pixels in OAM
+
+        if(
+            (*ly >= pos_y && *ly < pos_y+obj_height) &&      // Check if a row of pixels of the sprite lays on line ly
+            (pos_x < VIEW_PORT_WIDTH && pos_x > -7) // Check if the sprite is visible
+        )
+        {
+            drawn_sprites++;
+
+            uint16_t tile_map_base_address = 0x8000;
+            uint16_t tile_map_address = tile_map_base_address + tile_idx*TILE_BYTES;
+
+            // TODO
+        }
+    }
 }
 
 void draw_line()
 {
-    draw_tiles();
-    draw_sprites();
+    if(bg_window_enable())
+        draw_bg_window_tiles();
+
+    if(obj_enable())
+        draw_sprites();
 }
 
 void update_ppu(uint8_t cycles)
 {
+    if(!lcd_enable())
+    {
+        free_vram_oam();
+        return;
+    }
+
     line_cycle_counter += cycles;
     if(line_cycle_counter >= LINE_CYCLES)
     {

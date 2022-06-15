@@ -93,6 +93,7 @@ int main(int argc, char** argv)
             uint8_t step_cycles = step();
             update_timers(step_cycles);
             update_ppu(step_cycles);
+            update_dma_transfer(step_cycles);
             cycles += step_cycles;
         }
 

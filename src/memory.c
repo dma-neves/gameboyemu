@@ -23,6 +23,7 @@ uint8_t* windowy = memory + WY_ADR;
 uint8_t* bgp = memory + BGP_ADR;
 uint8_t* ie = memory + IE_ADR;
 uint8_t* intf = memory + IF_ADR;
+uint8_t* dma = memory + DMA_ADR;
 
 
 const uint8_t bootrom[0x100] = {
@@ -44,10 +45,81 @@ const uint8_t bootrom[0x100] = {
     0xF5, 0x06, 0x19, 0x78, 0x86, 0x23, 0x05, 0x20, 0xFB, 0x86, 0x00, 0x00, 0x3E, 0x01, 0xE0, 0x50
 };
 
+
+uint8_t vram_oam_locked = 1;
+
+/* -------------- dma -------------- */
+
+#define DMA_DURATION 160
+
+uint16_t dma_source;
+const uint16_t dma_dest = 0xFE00;
+uint8_t performing_dma_transfer = 0;
+uint8_t dma_transfer_counter = 0;
+
+void init_dma_transfer(uint8_t value)
+{
+    dma_source = value * 0x100;
+    performing_dma_transfer = 1;
+    dma_transfer_counter = 0;
+}
+
+void update_dma_transfer(uint8_t cycles)
+{
+    if(performing_dma_transfer)
+    {
+        dma_transfer_counter += cycles;
+        if(dma_transfer_counter >= DMA_DURATION)
+        {
+            performing_dma_transfer = 0;
+            for(uint16_t i = 0; i < 0x100; i++)
+            {
+                uint8_t byte;
+                mmu_read(dma_source+i, &byte);
+                mmu_write(dma_dest+i, byte);
+            }
+        }
+    }
+}
+
 void reset_memory()
 {
     memset(memory, 0, MEM_SIZE);
+    performing_dma_transfer = 0;
+    dma_transfer_counter = 0;
 }
+
+void lock_vram_oam()
+{
+    vram_oam_locked = 1;
+}
+
+void free_vram_oam()
+{
+    vram_oam_locked = 0;
+}
+
+uint8_t restricted_memory(uint16_t address)
+{
+    // TODO: remove
+    if(address == IO_REGISTERS_ADR)
+        return 1;
+    
+    if(vram_oam_locked)
+    {
+        if(address >= 0x8000 && address <= 0x9FFF)
+            return 1;
+
+        if(address >= 0xFE00 && address <= 0xFE9F)
+            return 1;
+    }
+
+    if(address >= 0xFEA0 && address <= 0xFEFF)
+        return 1;
+
+    return 0;
+}
+
 
 int mmu_write(uint16_t address, uint8_t byte)
 {
@@ -63,12 +135,18 @@ int mmu_write(uint16_t address, uint8_t byte)
     }
 
     if(address == BOOT_OFF_ADR && memory[address] == 0x1)
-        return 0;
+        return 1;
 
     if(address == DIV_ADR)
     {
         reset_div();
-        return 0;
+        return 1;
+    }
+
+    if(address == DMA_ADR)
+    {
+        init_dma_transfer(byte);
+        return 1;
     }
 
     memory[address] = byte;
@@ -86,13 +164,8 @@ void mmu_write_u16(uint16_t address, uint16_t byte)
 
 void mmu_read(uint16_t address, uint8_t* dest)
 {
-    if(address == IO_REGISTERS_ADR)
-    {
-        *dest = 0xFF;
-        return;
-    }
-
     // TODO: When the PPU is accessing some video-related memory, that memory is inaccessible to the CPU: writes are ignored, and reads return garbage values (usually $FF).
+    // TODO: When performing dma transfer, cpu can only read from HRAM 
 
     #ifdef DEBUG
         if(address == LY_ADR)
@@ -102,6 +175,12 @@ void mmu_read(uint16_t address, uint8_t* dest)
         }
     #endif
 
+    if(restricted_memory(address))
+    {
+        *dest = 0xFF;
+        return;
+    }
+    
     if(address <= 0x00FF && !memory[BOOT_OFF_ADR])
         *dest = bootrom[address];
     else
