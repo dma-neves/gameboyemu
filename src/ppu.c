@@ -148,8 +148,8 @@ void draw_tiles()
         // relative to the correct row of pixels in the tile
         tile_data_address += 2*tile_y;
         uint8_t tile_row_0, tile_row_1;
-        mmu_read(tile_data_address, &tile_row_0);
-        mmu_read(tile_data_address, &tile_row_1);
+        mmu_read(tile_data_address+1, &tile_row_0);
+        mmu_read(tile_data_address+0, &tile_row_1);
 
         /* Get color index bits */
 
