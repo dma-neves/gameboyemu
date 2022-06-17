@@ -29,6 +29,8 @@
 #define LYC_ADR 0xFF45
 #define DMA_ADR 0xFF46
 #define BGP_ADR 0xFF47
+#define OBP0_ADR 0xFF48
+#define OBP1_ADR 0xFF49
 #define WY_ADR 0xFF4A
 #define WX_ADR 0xFF4B
 #define BOOT_OFF_ADR 0xFF50
@@ -51,7 +53,8 @@ extern uint8_t* bgp;
 extern uint8_t* ie;
 extern uint8_t* intf;
 extern uint8_t* dma;
-
+extern uint8_t* obp0;
+extern uint8_t* obp1;
 
 void reset_memory();
 void update_dma_transfer(uint8_t cycles);

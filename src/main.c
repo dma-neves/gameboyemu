@@ -3,11 +3,11 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "memory.h"
+#include "mem.h"
 #include "cpu.h"
 #include "timer.h"
-#include "ppu.h"
-#include "ui.h"
+#include "ppu/ppu.h"
+#include "ppu/ui.h"
 
 /*
     gameboy's cpu runs at 4194304Hz <=> 
@@ -100,7 +100,6 @@ int main(int argc, char** argv)
         if(timer_60 >= 1.f/59.73f)
         {
             // Update display at a ~ 60Hz frequency and reset cycle counter
-            // ppu_new_frame();
             cycles = 0;
             timer_60 = 0;
             render_ui();

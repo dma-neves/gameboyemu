@@ -3,4 +3,4 @@
 *.gb
 emu
 debug_output/
-ppu_rod.c
+test/

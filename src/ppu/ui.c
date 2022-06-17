@@ -1,5 +1,5 @@
-#include "ui.h"
-#include "memory.h"
+#include "ppu/ui.h"
+#include "mem.h"
 
 #include <SDL2/SDL.h>
 

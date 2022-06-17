@@ -1,17 +1,23 @@
-#include "ppu.h"
-#include "memory.h"
-#include "ui.h"
+#include "ppu/ppu.h"
+#include "mem.h"
+#include "ppu/ui.h"
+#include "ppu/obj_list.h"
+#include "cpu.h"
 
 #include <stdint.h>
 #include <stdio.h>
 
+#define MIN(a,b) (((a)<(b))?(a):(b))
+#define MAX(a,b) (((a)>(b))?(a):(b))
+
 #define LINE_CYCLES 456
 #define NLINES 144
+#define NROWS 160
 #define VBLANK 10
 #define OAM_SEARCH_CYCLES 80
 #define MEM_READ_CYCLES 172 // TODO: Approximation (168 to 291 dots (40 to 60 µs) depending on sprite count)
 
-#define VIEW_PORT_WIDTH 160
+#define VIEW_PORT_WIDTH NROWS
 #define VIEW_PORT_HEIGH NLINES
 #define TILE_MAP_WIDTH 32
 #define TILE_MAP_PIXEL_WIDTH 256
@@ -24,33 +30,25 @@
 #define N_SPRITES 40 // Number of sprites
 #define MAX_SPL 10 // Max number of sprites drawn per line
 
-uint8_t background[TILE_BYTES * 32 * 32];
-uint8_t window[TILE_BYTES * 32 * 32];
+#define TRANSPARENT 0
 
-uint16_t line_cycle_counter = 0;
+static uint16_t line_cycle_counter = 0;
 
-uint8_t mode;
-uint8_t stat_int_line = 0x0; // stat interrupt line
-uint8_t stat_interrupt = 0x0;
+static uint8_t mode;
+static uint8_t stat_int_line = 0x0; // stat interrupt line
+static uint8_t stat_interrupt = 0x0;
 
 
 /* -------------- LCD Control -------------- */
 
 uint8_t bg_window_enable()      { return (*lcdc & 0x01) != 0; }
-uint8_t obj_enable()      { return (*lcdc & 0x02) != 0; }
+uint8_t obj_enable()            { return (*lcdc & 0x02) != 0; }
 uint8_t obj_size()              { return (*lcdc & 0x04) != 0; }
 uint8_t bg_tile_map_area()      { return (*lcdc & 0x08) != 0; }
 uint8_t tile_data_area()        { return (*lcdc & 0x10) != 0; }
 uint8_t window_enable()         { return (*lcdc & 0x20) != 0; }
 uint8_t window_tile_map_area()  { return (*lcdc & 0x40) != 0; }
 uint8_t lcd_enable()            { return (*lcdc & 0x80) != 0; }
-
-// TODO: possibly remove
-void ppu_new_frame()
-{
-    (*ly) = 0;
-    line_cycle_counter = 0;
-}
 
 uint8_t lcdc_stat_interrupt()
 {
@@ -107,10 +105,28 @@ void set_stat()
     if(new_stat_int_line == 1 && stat_int_line == 0) stat_interrupt = 1;
     stat_int_line = new_stat_int_line;
 }
+static uint8_t get_tile_color(uint8_t tile_row_0, uint8_t tile_row_1, uint8_t tile_x, uint8_t palette)
+{
+    // bit 7 represents the leftmost pixel, and bit 0 the rightmost
+    uint8_t color_index_bit_0, color_index_bit_1, color_index;
+    color_index_bit_0 = (tile_row_0 >> (7-tile_x)) & 0x1;
+    color_index_bit_1 = (tile_row_1 >> (7-tile_x)) & 0x1;
+    color_index = color_index_bit_0 | (color_index_bit_1 << 0x1);
+
+    /* Get color and set pixel on lcd */
+
+    // Color depends on palette assigned by BGP
+    uint8_t color_bit_0, color_bit_1, color;
+    color_bit_0 = ( palette >> (color_index*2) ) & 0x1;
+    color_bit_1 = ( palette >> (color_index*2+1) ) & 0x1;
+    color = color_bit_0 | (color_bit_1 << 0x1);
+
+    return color;
+}
 
 void draw_tiles(uint8_t scroll_x, uint8_t scroll_y, uint8_t offset_x, uint8_t offset_y, uint8_t tile_map_area_flag)
 {
-    // Tile map address depends on bg_tile_map_area flag
+    // Tile map address depends on bg_tile_map_area or window_tile_map_area flag
     uint16_t tile_map_base_address = tile_map_area_flag ? 0x9C00 : 0x9800;
 
     // Calculate pixel position taking into account the scx and scy offsets (viewport's position)
@@ -166,22 +182,7 @@ void draw_tiles(uint8_t scroll_x, uint8_t scroll_y, uint8_t offset_x, uint8_t of
         mmu_read(tile_data_address+1, &tile_row_0);
         mmu_read(tile_data_address+0, &tile_row_1);
 
-        /* Get color index bits */
-
-        // bit 7 represents the leftmost pixel, and bit 0 the rightmost
-        uint8_t color_index_bit_0, color_index_bit_1, color_index;
-        color_index_bit_0 = (tile_row_0 >> (7-tile_x)) & 0x1;
-        color_index_bit_1 = (tile_row_1 >> (7-tile_x)) & 0x1;
-        color_index = color_index_bit_0 | (color_index_bit_1 << 0x1);
-
-        /* Get color and set pixel on lcd */
-
-        // Color depends on palette assigned by BGP 0xFF47
-        uint8_t color_bit_0, color_bit_1, color;
-        color_bit_0 = ( (*bgp) >> (color_index*2) ) & 0x1;
-        color_bit_1 = ( (*bgp) >> (color_index*2+1) ) & 0x1;
-        color = color_bit_0 | (color_bit_1 << 0x1);
-
+        uint8_t color = get_tile_color(tile_row_0, tile_row_1, tile_x, *bgp);
         set_pixel(lcd_x, lcd_y, color);
     }
 }
@@ -196,40 +197,92 @@ void draw_bg_window_tiles()
         draw_tiles(0, 0, (*windowx)-7, *windowy, window_tile_map_area());
 }
 
-void draw_sprites()
+static void select_sprites()
 {
-    // note: color depends on pallete assigned by OBP0 0xFF48 and OBP1 0xFF49
+    obj_list_reset();
 
     uint8_t obj_height = obj_size() ? 16 : 8;
-
     uint16_t oam_adr = 0xFE00;
-    uint8_t drawn_sprites = 0;
-    for(uint8_t spriten; spriten < N_SPRITES && drawn_sprites < MAX_SPL; spriten++)
+    // Iterate over all 40 sprites that might be rendered on this line without exceeding the max 10 sprites per line
+    for(uint8_t spriten = 0; spriten < N_SPRITES && obj_list_size() < MAX_SPL; spriten++)
     {
-        uint8_t pos_y;
-        uint8_t pos_x;
-        uint8_t tile_idx;
-        uint8_t flags;
+        obj object;
 
-        mmu_read(oam_adr++, &pos_y);
-        mmu_read(oam_adr++, &pos_x);
-        mmu_read(oam_adr++, &tile_idx);
-        mmu_read(oam_adr++, &flags);
+        mmu_read(oam_adr++, &object.pos_y);
+        mmu_read(oam_adr++, &object.pos_x);
+        mmu_read(oam_adr++, &object.tile_number);
+        mmu_read(oam_adr++, &object.flags);
 
-        pos_y -= 16; // Pos y offsetted 16 pixels in OAM
-        pos_x -= 8;  // Pos x offsetted 8 pixels in OAM
+        object.pos_y -= 16; // Pos y offsetted 16 pixels in OAM
+        object.pos_x -= 8;  // Pos x offsetted 8 pixels in OAM
 
-        if(
-            (*ly >= pos_y && *ly < pos_y+obj_height) &&      // Check if a row of pixels of the sprite lays on line ly
-            (pos_x < VIEW_PORT_WIDTH && pos_x > -7) // Check if the sprite is visible
-        )
+        if(*ly >= object.pos_y && *ly < object.pos_y + obj_height) // Check if a row of pixels of the sprite lays on line ly
+            obj_list_add(object);
+    }
+}
+
+void draw_sprites()
+{
+    /* Get 10 sprites to draw and order them in a list (draw/select priority) */
+    select_sprites();
+
+    /* Draw the pixels from the selected sprites */
+
+    uint8_t drawn_pixels[NROWS] = {0}; // Binary array indicating which pixels have already been drawn (by sprites) in the current line
+
+    while(obj_list_size() > 0)
+    {
+        obj object = obj_list_remove(); // Get object with highest priority
+    
+        uint8_t pallet_number = object.flags & 0x10;
+        // uint8_t x_flip        = object.flags & 0x20;
+        // uint8_t y_flip        = object.flags & 0x40;
+        uint8_t bg_over_obj   = object.flags & 0x80;
+
+        uint8_t x_start = MAX(object.pos_x, 0);
+        uint8_t x_end = MIN(object.pos_x + TILE_WIDTH, NROWS);
+
+        if(bg_over_obj)
         {
-            drawn_sprites++;
+            // Previously drawn background pixels are displayed. Sprite pixels aren't drawn
+            for(uint16_t x = x_start; x < x_end; x++)
+                drawn_pixels[x] = 1;
+        }
+        else
+        {
+            /* Fetch pixels from tile data */
 
-            uint16_t tile_map_base_address = 0x8000;
-            uint16_t tile_map_address = tile_map_base_address + tile_idx*TILE_BYTES;
+            // TODO: x,y flips
 
-            // TODO
+            uint16_t tile_data_address;
+
+            uint8_t tile_y = (*ly) - object.pos_y; // row within tile
+            if(tile_y < TILE_HEIGHT)
+                tile_data_address = (0x8000 + object.tile_number*TILE_BYTES) + 2*tile_y;
+            else
+                // Sprite uses 2 tiles. Use second tile
+                tile_data_address = (0x8000 + (object.tile_number + 1)*TILE_BYTES) + 2*(tile_y-TILE_HEIGHT);
+
+            // Fetch the 2 bytes (2 bytes required since each pixel is represented by a 2 bit color) 
+            // relative to the correct row of pixels in the tile
+            uint8_t tile_row_0, tile_row_1;
+            mmu_read(tile_data_address+1, &tile_row_0);
+            mmu_read(tile_data_address+0, &tile_row_1);
+
+            /* Draw pixels */
+
+            for(uint16_t x = x_start; x < x_end; x++)
+            {
+                uint8_t tile_x = x - object.pos_x; // X coordinate within tile row
+                uint8_t palette = pallet_number ? *obp1 : *obp0; // Sellect pallete based on flag
+                uint8_t color = get_tile_color(tile_row_0, tile_row_1, tile_x, palette);
+
+                if(!drawn_pixels[x] && color != TRANSPARENT)
+                {
+                    drawn_pixels[x] = 1;
+                    set_pixel(x, *ly, color);
+                }
+            }
         }
     }
 }

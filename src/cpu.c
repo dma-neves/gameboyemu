@@ -4,8 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "memory.h"
-#include "ppu.h"
+#include "mem.h"
+#include "ppu/ppu.h"
 
 /* -------------- data -------------- */
 

@@ -1,4 +1,4 @@
-#include "memory.h"
+#include "mem.h"
 #include "timer.h"
 
 #include <string.h>
@@ -24,6 +24,8 @@ uint8_t* bgp = memory + BGP_ADR;
 uint8_t* ie = memory + IE_ADR;
 uint8_t* intf = memory + IF_ADR;
 uint8_t* dma = memory + DMA_ADR;
+uint8_t* obp0 = memory + OBP0_ADR;
+uint8_t* obp1 = memory + OBP1_ADR;
 
 
 const uint8_t bootrom[0x100] = {
@@ -105,17 +107,17 @@ uint8_t restricted_memory(uint16_t address)
     if(address == IO_REGISTERS_ADR)
         return 1;
     
-    if(vram_oam_locked)
-    {
-        if(address >= 0x8000 && address <= 0x9FFF)
-            return 1;
+    // if(vram_oam_locked)
+    // {
+    //     if(address >= 0x8000 && address <= 0x9FFF)
+    //         return 1;
 
-        if(address >= 0xFE00 && address <= 0xFE9F)
-            return 1;
-    }
+    //     if(address >= 0xFE00 && address <= 0xFE9F)
+    //         return 1;
+    // }
 
-    if(address >= 0xFEA0 && address <= 0xFEFF)
-        return 1;
+    // if(address >= 0xFEA0 && address <= 0xFEFF)
+    //     return 1;
 
     return 0;
 }
