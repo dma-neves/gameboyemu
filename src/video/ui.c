@@ -1,4 +1,4 @@
-#include "ppu/ui.h"
+#include "video/ui.h"
 #include "mem.h"
 
 #include <SDL2/SDL.h>

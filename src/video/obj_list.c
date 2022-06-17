@@ -1,4 +1,4 @@
-#include "ppu/obj_list.h"
+#include "video/obj_list.h"
 
 #include <stdio.h>
 

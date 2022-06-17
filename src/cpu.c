@@ -5,7 +5,7 @@
 #include <string.h>
 
 #include "mem.h"
-#include "ppu/ppu.h"
+#include "video/ppu.h"
 
 /* -------------- data -------------- */
 

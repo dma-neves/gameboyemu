@@ -6,8 +6,8 @@
 #include "mem.h"
 #include "cpu.h"
 #include "timer.h"
-#include "ppu/ppu.h"
-#include "ppu/ui.h"
+#include "video/ppu.h"
+#include "video/ui.h"
 
 /*
     gameboy's cpu runs at 4194304Hz <=> 

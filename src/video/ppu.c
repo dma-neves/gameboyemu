@@ -1,7 +1,7 @@
-#include "ppu/ppu.h"
+#include "video/ppu.h"
 #include "mem.h"
-#include "ppu/ui.h"
-#include "ppu/obj_list.h"
+#include "video/ui.h"
+#include "video/obj_list.h"
 #include "cpu.h"
 
 #include <stdint.h>
