@@ -5,6 +5,7 @@
 #include <stdio.h>
 
 #include "cpu.h"
+#include "controls.h"
 
 uint8_t memory[MEM_SIZE];
 
@@ -26,7 +27,7 @@ uint8_t* intf = memory + IF_ADR;
 uint8_t* dma = memory + DMA_ADR;
 uint8_t* obp0 = memory + OBP0_ADR;
 uint8_t* obp1 = memory + OBP1_ADR;
-
+uint8_t* joyp = memory + JOYP_ADR;
 
 const uint8_t bootrom[0x100] = {
     0x31, 0xFE, 0xFF, 0xAF, 0x21, 0xFF, 0x9F, 0x32, 0xCB, 0x7C, 0x20, 0xFB, 0x21, 0x26, 0xFF, 0x0E,
@@ -104,20 +105,20 @@ void free_vram_oam()
 uint8_t restricted_memory(uint16_t address)
 {
     // TODO: remove
-    if(address == IO_REGISTERS_ADR)
-        return 1;
-    
-    // if(vram_oam_locked)
-    // {
-    //     if(address >= 0x8000 && address <= 0x9FFF)
-    //         return 1;
-
-    //     if(address >= 0xFE00 && address <= 0xFE9F)
-    //         return 1;
-    // }
-
-    // if(address >= 0xFEA0 && address <= 0xFEFF)
+    // if(address == JOYP_ADR)
     //     return 1;
+    
+    if(vram_oam_locked)
+    {
+        if(address >= 0x8000 && address <= 0x9FFF)
+            return 1;
+
+        if(address >= 0xFE00 && address <= 0xFE9F)
+            return 1;
+    }
+
+    if(address >= 0xFEA0 && address <= 0xFEFF)
+        return 1;
 
     return 0;
 }
@@ -136,6 +137,9 @@ int mmu_write(uint16_t address, uint8_t byte)
         #endif
     }
 
+    if(restricted_memory(address))
+        return 1;
+
     if(address == BOOT_OFF_ADR && memory[address] == 0x1)
         return 1;
 
@@ -150,6 +154,12 @@ int mmu_write(uint16_t address, uint8_t byte)
         init_dma_transfer(byte);
         return 1;
     }
+
+    if(address == JOYP_ADR)
+    {
+        write_joyp_reg(byte);
+        return 1;
+    }   
 
     memory[address] = byte;
     return 1;

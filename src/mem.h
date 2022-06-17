@@ -15,7 +15,7 @@
 #define ECHO_RAM_ADR 0xE000
 #define OAM_ADR 0xFE00
 #define UNUSABLE_ADR 0xFEA0
-#define IO_REGISTERS_ADR 0xFF00
+#define JOYP_ADR 0xFF00
 #define DIV_ADR 0xFF04
 #define TIMA_ADR 0xFF05
 #define TMA_ADR 0xFF06
@@ -55,6 +55,7 @@ extern uint8_t* intf;
 extern uint8_t* dma;
 extern uint8_t* obp0;
 extern uint8_t* obp1;
+extern uint8_t* joyp;
 
 void reset_memory();
 void update_dma_transfer(uint8_t cycles);

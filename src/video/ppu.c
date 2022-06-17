@@ -113,9 +113,9 @@ static uint8_t get_tile_color(uint8_t tile_row_0, uint8_t tile_row_1, uint8_t ti
     color_index_bit_1 = (tile_row_1 >> (7-tile_x)) & 0x1;
     color_index = color_index_bit_0 | (color_index_bit_1 << 0x1);
 
-    /* Get color and set pixel on lcd */
+    /* Get color*/
 
-    // Color depends on palette assigned by BGP
+    // Color depends on palette
     uint8_t color_bit_0, color_bit_1, color;
     color_bit_0 = ( palette >> (color_index*2) ) & 0x1;
     color_bit_1 = ( palette >> (color_index*2+1) ) & 0x1;

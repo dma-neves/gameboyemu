@@ -8,6 +8,7 @@
 #include "timer.h"
 #include "video/ppu.h"
 #include "video/ui.h"
+#include "controls.h"
 
 /*
     gameboy's cpu runs at 4194304Hz <=> 
@@ -120,7 +121,14 @@ void handle_events()
         case SDL_KEYDOWN:
             if(event.key.keysym.sym == SDLK_ESCAPE)
                 running = 0;
+
+            else
+                controls_pressed(event.key.keysym.sym);
+
             break;
+
+        case SDL_KEYUP:
+            controls_released(event.key.keysym.sym);
         
         default:
             break;
