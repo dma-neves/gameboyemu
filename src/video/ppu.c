@@ -6,6 +6,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
@@ -36,6 +37,9 @@ static uint16_t line_cycle_counter = 0;
 
 static uint8_t mode;
 static uint8_t stat_int_line = 0x0; // stat interrupt line
+
+uint8_t obj_filled_pixels[NROWS] = {0}; // Binary array indicating which pixels have already been drawn (by sprites) in the current line
+uint8_t bgw_filled_pixels[NROWS] = {0}; // Binary array indicating which pixels have already been drawn (by background/window) in the current line
 
 /* -------------- LCD Control -------------- */
 
@@ -96,6 +100,13 @@ void set_stat()
         request_interrupt(LCD_STAT_INT);
     stat_int_line = new_stat_int_line;
 }
+
+static void clear_filled_pixels()
+{
+    memset(obj_filled_pixels, 0, sizeof(uint8_t)*NROWS);
+    memset(bgw_filled_pixels, 0, sizeof(uint8_t)*NROWS);
+}
+
 static uint8_t get_tile_color(uint8_t tile_row_0, uint8_t tile_row_1, uint8_t tile_x, uint8_t palette)
 {
     // bit 7 represents the leftmost pixel, and bit 0 the rightmost
@@ -175,6 +186,8 @@ void draw_tiles(uint8_t scroll_x, uint8_t scroll_y, uint8_t offset_x, uint8_t of
 
         uint8_t color = get_tile_color(tile_row_0, tile_row_1, tile_x, *bgp);
         set_pixel(lcd_x, lcd_y, color);
+        if(color != 0)
+            bgw_filled_pixels[lcd_x] = 1;
     }
 }
 
@@ -221,7 +234,6 @@ void draw_sprites()
 
     uint8_t obj_height = obj_size() ? TILE_HEIGHT*2 : TILE_HEIGHT;
     uint8_t obj_width = TILE_WIDTH;
-    uint8_t drawn_pixels[NROWS] = {0}; // Binary array indicating which pixels have already been drawn (by sprites) in the current line
 
     while(obj_list_size() > 0)
     {
@@ -235,48 +247,40 @@ void draw_sprites()
         uint8_t x_start = MAX(object.pos_x, 0);
         uint8_t x_end = MIN(object.pos_x + TILE_WIDTH, NROWS);
 
-        if(bg_over_obj)
-        {
-            // Previously drawn background pixels are displayed. Sprite pixels aren't drawn
-            for(uint16_t x = x_start; x < x_end; x++)
-                drawn_pixels[x] = 1;
-        }
+        /* Fetch pixels from tile data */
+
+        // TODO: x,y flips
+
+        uint16_t tile_data_address;
+
+        uint8_t tile_y = y_flip ? obj_height - ((*ly) - object.pos_y) : (*ly) - object.pos_y; // row within tile
+        if(tile_y < TILE_HEIGHT)
+            tile_data_address = (0x8000 + object.tile_number*TILE_BYTES) + 2*tile_y;
         else
+            // Sprite uses 2 tiles. Use second tile
+            tile_data_address = (0x8000 + (object.tile_number + 1)*TILE_BYTES) + 2*(tile_y-TILE_HEIGHT);
+
+        // Fetch the 2 bytes (2 bytes required since each pixel is represented by a 2 bit color) 
+        // relative to the correct row of pixels in the tile
+        uint8_t tile_row_0, tile_row_1;
+        mmu_read(tile_data_address+1, &tile_row_0);
+        mmu_read(tile_data_address+0, &tile_row_1);
+
+        /* Draw pixels */
+
+        for(uint16_t x = x_start; x < x_end; x++)
         {
-            /* Fetch pixels from tile data */
-
-            // TODO: x,y flips
-
-            uint16_t tile_data_address;
-
-            uint8_t tile_y = y_flip ? obj_height - ((*ly) - object.pos_y) : (*ly) - object.pos_y; // row within tile
-            if(tile_y < TILE_HEIGHT)
-                tile_data_address = (0x8000 + object.tile_number*TILE_BYTES) + 2*tile_y;
-            else
-                // Sprite uses 2 tiles. Use second tile
-                tile_data_address = (0x8000 + (object.tile_number + 1)*TILE_BYTES) + 2*(tile_y-TILE_HEIGHT);
-
-            // Fetch the 2 bytes (2 bytes required since each pixel is represented by a 2 bit color) 
-            // relative to the correct row of pixels in the tile
-            uint8_t tile_row_0, tile_row_1;
-            mmu_read(tile_data_address+1, &tile_row_0);
-            mmu_read(tile_data_address+0, &tile_row_1);
-
-            /* Draw pixels */
-
-            for(uint16_t x = x_start; x < x_end; x++)
+            if(!obj_filled_pixels[x])
             {
-                if(!drawn_pixels[x])
-                {
-                    uint8_t tile_x = x_flip ? obj_width - (x - object.pos_x) :  x - object.pos_x; // X coordinate within tile row
-                    uint8_t palette = pallet_number ? *obp1 : *obp0; // Sellect pallete based on flag
-                    uint8_t color = get_tile_color(tile_row_0, tile_row_1, tile_x, palette);
+                uint8_t tile_x = x_flip ? obj_width - (x - object.pos_x) :  x - object.pos_x; // X coordinate within tile row
+                uint8_t palette = pallet_number ? *obp1 : *obp0; // Sellect pallete based on flag
+                uint8_t color = get_tile_color(tile_row_0, tile_row_1, tile_x, palette);
 
-                    if(color != TRANSPARENT)
-                    {
-                        drawn_pixels[x] = 1;
+                if(color != TRANSPARENT)
+                {
+                    obj_filled_pixels[x] = 1;
+                    if(!(bg_over_obj && bgw_filled_pixels[x]))
                         set_pixel(x, *ly, color);
-                    }
                 }
             }
         }
@@ -285,6 +289,8 @@ void draw_sprites()
 
 void draw_line()
 {
+    clear_filled_pixels();
+
     if(bg_window_enable())
         draw_bg_window_tiles();
 
