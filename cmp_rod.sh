@@ -1,1 +1,0 @@
-./emu roms/blargg/individual/11-op\ a\,\(hl\).gb > debug_output/daveout
