@@ -1,5 +1,6 @@
 #include "timer.h"
 #include "mem.h"
+#include "cpu.h"
 
 #include <stdint.h>
 
@@ -34,6 +35,7 @@ void inc_tima()
     {
         *tima = *tma;
         (*intf) |= (0x1 << 0x2);
+        request_interrupt(TIMER_INT);
     }
     else
         (*tima)++;

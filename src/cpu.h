@@ -5,6 +5,12 @@
 
 #define REG_HL NULL
 
+#define VBLANK_INT 0x1
+#define LCD_STAT_INT 0x2
+#define TIMER_INT 0x4
+#define SERIAL_INT 0x8
+#define JOYPAD_INT 0x10
+
 struct cpu
 {
     union
@@ -37,5 +43,6 @@ struct cpu
 void reset_cpu();
 uint8_t step();
 void set_debug(uint8_t value);
+void request_interrupt(uint8_t source);
 
 #endif

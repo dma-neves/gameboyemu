@@ -58,6 +58,8 @@ extern uint8_t* obp1;
 extern uint8_t* joyp;
 
 void reset_memory();
+int load_rom(char* file);
+
 void update_dma_transfer(uint8_t cycles);
 
 void lock_vram_oam();

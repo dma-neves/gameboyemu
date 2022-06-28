@@ -2,7 +2,9 @@
 
 #include <stdio.h>
 
-obj obj_list[10];
+#define LIST_SIZE 10
+
+obj obj_list[LIST_SIZE];
 uint16_t size = 0;
 
 void obj_list_reset()
@@ -22,7 +24,7 @@ void obj_list_insert(obj o, uint16_t index)
 
 void obj_list_add(obj o)
 {
-    if(size == 10)
+    if(size == LIST_SIZE)
         return;
 
     uint16_t index = 0;

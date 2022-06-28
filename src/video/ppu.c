@@ -36,8 +36,6 @@ static uint16_t line_cycle_counter = 0;
 
 static uint8_t mode;
 static uint8_t stat_int_line = 0x0; // stat interrupt line
-static uint8_t stat_interrupt = 0x0;
-
 
 /* -------------- LCD Control -------------- */
 
@@ -50,15 +48,12 @@ uint8_t window_enable()         { return (*lcdc & 0x20) != 0; }
 uint8_t window_tile_map_area()  { return (*lcdc & 0x40) != 0; }
 uint8_t lcd_enable()            { return (*lcdc & 0x80) != 0; }
 
-uint8_t lcdc_stat_interrupt()
+static void set_stat_bit(uint8_t bitn, uint8_t value)
 {
-    if(stat_interrupt)
-    {
-        stat_interrupt = 0;
-        return 1;
-    }
-    else
-        return 0;
+    uint8_t b = value ? 1 : 0;
+
+    (*lcdc_stat) &= ~(0x1 << bitn);  // clear bit
+    (*lcdc_stat) |= (b << bitn);     // or bit with value
 }
 
 uint8_t get_stat_int_line()
@@ -80,13 +75,8 @@ uint8_t get_stat_int_line()
 
 void set_stat()
 {
-    // (*lcdc_stat) = (*lcdc_stat) & ~(0x1 << 0x2) | ((*ly == *lyc) << 0x2);
-    if(*ly == *lyc)
-        (*lcdc_stat) |= (0x1 << 0x2);
-    else
-        (*lcdc_stat) &= ~(0x1 << 0x2);
+    set_stat_bit(0x2, (*ly == *lyc));
 
-    uint8_t mode;
     if(*ly >= NLINES)
         mode = 1;
     else if(line_cycle_counter < OAM_SEARCH_CYCLES)
@@ -97,12 +87,13 @@ void set_stat()
         mode = 0;
 
     // Set lcdc_stat bits 0 and 1 equal to bits 0 and 1 from mode
-    (*lcdc_stat) &= ~0x2;
-    (*lcdc_stat) |= mode;
+    set_stat_bit(0x0, mode & 0x1);
+    set_stat_bit(0x1, mode & 0x2);
 
     // Enable interrupt if there is a rising edge in the stat interrupt line
     uint8_t new_stat_int_line = get_stat_int_line();
-    if(new_stat_int_line == 1 && stat_int_line == 0) stat_interrupt = 1;
+    if(new_stat_int_line == 1 && stat_int_line == 0)
+        request_interrupt(LCD_STAT_INT);
     stat_int_line = new_stat_int_line;
 }
 static uint8_t get_tile_color(uint8_t tile_row_0, uint8_t tile_row_1, uint8_t tile_x, uint8_t palette)
@@ -228,6 +219,8 @@ void draw_sprites()
 
     /* Draw the pixels from the selected sprites */
 
+    uint8_t obj_height = obj_size() ? TILE_HEIGHT*2 : TILE_HEIGHT;
+    uint8_t obj_width = TILE_WIDTH;
     uint8_t drawn_pixels[NROWS] = {0}; // Binary array indicating which pixels have already been drawn (by sprites) in the current line
 
     while(obj_list_size() > 0)
@@ -235,8 +228,8 @@ void draw_sprites()
         obj object = obj_list_remove(); // Get object with highest priority
     
         uint8_t pallet_number = object.flags & 0x10;
-        // uint8_t x_flip        = object.flags & 0x20;
-        // uint8_t y_flip        = object.flags & 0x40;
+        uint8_t x_flip        = object.flags & 0x20;
+        uint8_t y_flip        = object.flags & 0x40;
         uint8_t bg_over_obj   = object.flags & 0x80;
 
         uint8_t x_start = MAX(object.pos_x, 0);
@@ -256,7 +249,7 @@ void draw_sprites()
 
             uint16_t tile_data_address;
 
-            uint8_t tile_y = (*ly) - object.pos_y; // row within tile
+            uint8_t tile_y = y_flip ? obj_height - ((*ly) - object.pos_y) : (*ly) - object.pos_y; // row within tile
             if(tile_y < TILE_HEIGHT)
                 tile_data_address = (0x8000 + object.tile_number*TILE_BYTES) + 2*tile_y;
             else
@@ -273,14 +266,17 @@ void draw_sprites()
 
             for(uint16_t x = x_start; x < x_end; x++)
             {
-                uint8_t tile_x = x - object.pos_x; // X coordinate within tile row
-                uint8_t palette = pallet_number ? *obp1 : *obp0; // Sellect pallete based on flag
-                uint8_t color = get_tile_color(tile_row_0, tile_row_1, tile_x, palette);
-
-                if(!drawn_pixels[x] && color != TRANSPARENT)
+                if(!drawn_pixels[x])
                 {
-                    drawn_pixels[x] = 1;
-                    set_pixel(x, *ly, color);
+                    uint8_t tile_x = x_flip ? obj_width - (x - object.pos_x) :  x - object.pos_x; // X coordinate within tile row
+                    uint8_t palette = pallet_number ? *obp1 : *obp0; // Sellect pallete based on flag
+                    uint8_t color = get_tile_color(tile_row_0, tile_row_1, tile_x, palette);
+
+                    if(color != TRANSPARENT)
+                    {
+                        drawn_pixels[x] = 1;
+                        set_pixel(x, *ly, color);
+                    }
                 }
             }
         }
@@ -301,6 +297,8 @@ void update_ppu(uint8_t cycles)
     if(!lcd_enable())
     {
         free_vram_oam();
+        *ly = 0;
+        //*lcdc_stat = 0x0;
         return;
     }
 
@@ -322,10 +320,8 @@ void update_ppu(uint8_t cycles)
     }
 
     // Set VBLANK interrupt flag
-    if(*ly >= NLINES)
-        (*intf) |= 0x1;
-    else
-        (*intf) &= ~0x1;
+    if(*ly == NLINES)
+        request_interrupt(VBLANK_INT);
 
     set_stat();
 }

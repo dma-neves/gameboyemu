@@ -121,6 +121,8 @@ uint8_t step()
             print_cpu_state();
             debug_counter++;
         }
+        //print_cpu_state();
+
 
         // if(debug_counter >= )
         //     exit(1);
@@ -161,28 +163,29 @@ int handle_interrupts()
         // Check if both interrupt enable and interrupt flag are set for the given source
         if((*ie) & (*intf) & (0x1 << i))
         {
-            // For source 1 (LCDC STAT) check interrupt flag given by the ppu
-            if(i != 0x1 || lcdc_stat_interrupt())
+            interrupt_called = 1;
+            cpu.hlt = 0;
+
+            // if ime is set to false, interrupts don't occur
+            if(cpu.ime)
             {
-                interrupt_called = 1;
-                cpu.hlt = 0;
+                cpu.ime = 0;
+                // Clear interrupt flag associated with the given source
+                uint8_t bitmask = ~(0x1 << i);
+                (*intf) &= bitmask;
 
-                // if ime is set to false, interrupts don't occur
-                if(cpu.ime)
-                {
-                    cpu.ime = 0;
-                    // Clear interrupt flag associated with the given source
-                    uint8_t bitmask = ~(0x1 << i);
-                    (*intf) &= bitmask;
-
-                    call(interrupt_vector[i]);
-                }
+                call(interrupt_vector[i]);
             }
         }
     }
 
     int cycles = interrupt_called ? 20 : 0;
     return cycles;
+}
+
+void request_interrupt(uint8_t source)
+{
+    (*intf) |= source;
 }
 
 /* -------------- utils -------------- */

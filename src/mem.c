@@ -92,6 +92,31 @@ void reset_memory()
     dma_transfer_counter = 0;
 }
 
+int load_rom(char* file)
+{
+    FILE *fp;
+    int c, i, max = VRAM_ADR;
+
+    fp = fopen(file, "rb");
+    if (fp == NULL)
+    {
+        fprintf(stderr, "error: cannot open input file\n");
+        return -1;
+    }
+
+    for (i = 0; i <= max && (c = getc(fp)) != EOF; i++)
+        memory[ROM_B00_ADR + i] = (uint8_t)c;
+
+    if(c != EOF)
+    {
+        fprintf(stderr, "error: rom to big (Max size: %d bytes)\n", max);
+        fclose(fp);
+        return -1;
+    }
+
+    return fclose(fp);
+}
+
 void lock_vram_oam()
 {
     vram_oam_locked = 1;
@@ -103,11 +128,7 @@ void free_vram_oam()
 }
 
 uint8_t restricted_memory(uint16_t address)
-{
-    // TODO: remove
-    // if(address == JOYP_ADR)
-    //     return 1;
-    
+{       
     if(vram_oam_locked)
     {
         if(address >= 0x8000 && address <= 0x9FFF)
@@ -123,7 +144,6 @@ uint8_t restricted_memory(uint16_t address)
     return 0;
 }
 
-
 int mmu_write(uint16_t address, uint8_t byte)
 {
     if(address == BOOT_OFF_ADR)
@@ -137,7 +157,7 @@ int mmu_write(uint16_t address, uint8_t byte)
         #endif
     }
 
-    if(restricted_memory(address))
+    if(address <= 0x7FFF || restricted_memory(address))
         return 1;
 
     if(address == BOOT_OFF_ADR && memory[address] == 0x1)
@@ -159,7 +179,7 @@ int mmu_write(uint16_t address, uint8_t byte)
     {
         write_joyp_reg(byte);
         return 1;
-    }   
+    }
 
     memory[address] = byte;
     return 1;
@@ -193,7 +213,7 @@ void mmu_read(uint16_t address, uint8_t* dest)
         return;
     }
     
-    if(address <= 0x00FF && !memory[BOOT_OFF_ADR])
+    if(address <= 0xFF && !memory[BOOT_OFF_ADR])
         *dest = bootrom[address];
     else
         *dest = memory[address];

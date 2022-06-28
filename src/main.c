@@ -23,31 +23,6 @@ void render();
 void handle_events();
 void update();
 
-int load_rom(char* file)
-{
-    FILE *fp;
-    int c, i, max = VRAM_ADR;
-
-    fp = fopen(file, "rb");
-    if (fp == NULL)
-    {
-        fprintf(stderr, "error: cannot open input file\n");
-        return -1;
-    }
-
-    for (i = 0; i <= max && (c = getc(fp)) != EOF; i++)
-        mmu_write(ROM_B00_ADR + i, (uint8_t)c);
-
-    if(c != EOF)
-    {
-        fprintf(stderr, "error: rom to big (Max size: %d bytes)\n", max);
-        fclose(fp);
-        return -1;
-    }
-
-    return fclose(fp);
-}
-
 void reset_system()
 {
     reset_memory();

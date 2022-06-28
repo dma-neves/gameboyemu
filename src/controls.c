@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 
-uint8_t keys[8] = {0};
+uint8_t button[8] = {0};
 
 #define UP 0
 #define LEFT 1
@@ -14,7 +14,7 @@ uint8_t keys[8] = {0};
 #define START 6
 #define SELECT 7
 
-static int get_key_index(SDL_Keycode key)
+static int get_button_index(SDL_Keycode key)
 {
     switch (key)
     {
@@ -22,10 +22,10 @@ static int get_key_index(SDL_Keycode key)
         case SDLK_a: return LEFT;
         case SDLK_s: return DOWN;
         case SDLK_d: return RIGHT;
-        case SDLK_j: return A;
-        case SDLK_k: return B;
-        case SDLK_n: return START;
-        case SDLK_m: return SELECT;
+        case SDLK_j: return B;
+        case SDLK_k: return A;
+        case SDLK_n: return SELECT;
+        case SDLK_m: return START;
         default: break;    
     }
 
@@ -34,60 +34,63 @@ static int get_key_index(SDL_Keycode key)
 
 void controls_pressed(SDL_Keycode key)
 {
-    int ki = get_key_index(key);
+    int ki = get_button_index(key);
     if(ki != -1)
     {
         uint8_t action = (((*joyp) >> 0x5) & 0x1) == 0x0;
         uint8_t direction = (((*joyp) >> 0x4) & 0x1) == 0x0;
 
-        if( (action && ki >= A) || (direction && ki <= RIGHT) )
-            ; // Interrupt
+        // Joypad interrupt is requested when button is pressed 
+        // (provided that the action/direction buttons are enabled by bit 5/4, respectively)
+        if( button[ki] == 0 && ( (action && ki >= A) || (direction && ki <= RIGHT) ) )
+            (*intf) |= (0x1 << 0x4);
 
-
-        keys[get_key_index(key)] = 1;
+        button[ki] = 1;
     }
 }
 
 void controls_released(SDL_Keycode key)
 {
-    int ki = get_key_index(key);
+    int ki = get_button_index(key);
     if(ki != -1)
-        keys[get_key_index(key)] = 0;
+        button[ki] = 0;
 }
 
 static void set_joyp_bit(uint8_t bitn, uint8_t value)
 {
-    uint8_t value_bit = value ? 1 : 0;
+    uint8_t b = value ? 1 : 0;
 
-    (*joyp) &= ~(0x1 << bitn);
-    (*joyp) |= (value_bit << bitn);
+    (*joyp) &= ~(0x1 << bitn);  // clear bit
+    (*joyp) |= (b << bitn);     // or bit with value
 }
 
 void write_joyp_reg(uint8_t value)
 {
-    uint8_t action = (((*joyp) >> 0x5) & 0x1) == 0x0;
-    uint8_t direction = (((*joyp) >> 0x4) & 0x1) == 0x0;
+    uint8_t action = ((value >> 0x5) & 0x1) == 0x0;
+    uint8_t direction = ((value >> 0x4) & 0x1) == 0x0;
+
+    *joyp = value;
 
     if(action && direction)
     {
-        set_joyp_bit(3, !(keys[START] || keys[DOWN]));
-        set_joyp_bit(2, !(keys[SELECT] || keys[UP]));   
-        set_joyp_bit(1, !(keys[B] || keys[LEFT]));   
-        set_joyp_bit(0, !(keys[A] || keys[RIGHT]));
+        set_joyp_bit(3, !(button[START] || button[DOWN]));
+        set_joyp_bit(2, !(button[SELECT] || button[UP]));   
+        set_joyp_bit(1, !(button[B] || button[LEFT]));   
+        set_joyp_bit(0, !(button[A] || button[RIGHT]));
     }
     else if(action)
     {
-        set_joyp_bit(3, !keys[START]);
-        set_joyp_bit(2, !keys[SELECT]);   
-        set_joyp_bit(1, !keys[B]);   
-        set_joyp_bit(0, !keys[A]);    
+        set_joyp_bit(3, !button[START]);
+        set_joyp_bit(2, !button[SELECT]);   
+        set_joyp_bit(1, !button[B]);   
+        set_joyp_bit(0, !button[A]);  
     }
 
     else if(direction)
     {
-        set_joyp_bit(3, !keys[DOWN]);
-        set_joyp_bit(2, !keys[UP]);   
-        set_joyp_bit(1, !keys[LEFT]);   
-        set_joyp_bit(0, !keys[RIGHT]);   
+        set_joyp_bit(3, !button[DOWN]);
+        set_joyp_bit(2, !button[UP]);   
+        set_joyp_bit(1, !button[LEFT]);   
+        set_joyp_bit(0, !button[RIGHT]);
     }
 }
