@@ -22,10 +22,10 @@ static int get_button_index(SDL_Keycode key)
         case SDLK_a: return LEFT;
         case SDLK_s: return DOWN;
         case SDLK_d: return RIGHT;
-        case SDLK_j: return B;
-        case SDLK_k: return A;
-        case SDLK_n: return SELECT;
-        case SDLK_m: return START;
+        case SDLK_o: return B;
+        case SDLK_p: return A;
+        case SDLK_k: return SELECT;
+        case SDLK_l: return START;
         default: break;    
     }
 
