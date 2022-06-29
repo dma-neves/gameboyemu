@@ -58,6 +58,7 @@ extern uint8_t* obp1;
 extern uint8_t* joyp;
 
 void reset_memory();
+int load_bootrom(char* file);
 int load_rom(char* file);
 
 void update_dma_transfer(uint8_t cycles);

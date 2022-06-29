@@ -4,4 +4,4 @@
 emu
 debug_output/
 test/
-other/info/bootrom.c
+other/bootrom/

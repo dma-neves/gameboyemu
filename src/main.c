@@ -31,17 +31,21 @@ void reset_system()
 
 int main(int argc, char** argv)
 {
-    if(argc < 2)
+    if(argc < 3)
     {
-        printf("usage: ./emu rom.gb\n");
+        printf("usage: ./emu bootrom.gb rom.gb\n");
         return 0;
     }
 
     reset_system();
     #ifndef DEBUG
+        printf("Loading bootrom\n");
+    #endif
+    load_bootrom(argv[1]);
+    #ifndef DEBUG
         printf("Loading rom\n");
     #endif
-    load_rom(argv[1]);
+    load_rom(argv[2]);
     #ifndef DEBUG
         printf("Initializing UI\n");
     #endif
