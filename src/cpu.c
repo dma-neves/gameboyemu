@@ -9,8 +9,6 @@
 
 /* -------------- data -------------- */
 
-long debug_counter = 1;
-
 struct cpu cpu;
 uint8_t debug_enable = 0;
 static const uint16_t interrupt_vector[] = { 0x40, 0x48, 0x50, 0x58, 0x60 };
@@ -117,26 +115,19 @@ uint8_t step()
         uint8_t opcode;
         mmu_read(cpu.pc++, &opcode);
 
-        if(debug_enable) {
+        if(debug_enable)
             print_cpu_state();
-            debug_counter++;
-        }
-        //print_cpu_state();
-
-
-        // if(debug_counter >= )
-        //     exit(1);
 
         if(opcode == 0xCB)
         {
             mmu_read(cpu.pc++, &opcode);
-            if(debug_enable) { printf("cb %x %x\n", opcode, cpu.pc-2); debug_counter++; }
+            if(debug_enable) printf("cb %x %x\n", opcode, cpu.pc-2);
             decode_exec_cb(opcode);
             cycles = cb_op_cycles[opcode] + extra_cycles;
         }
         else
         {
-            if(debug_enable) { printf("%x %x\n", opcode, cpu.pc-1); debug_counter++; }
+            if(debug_enable) printf("%x %x\n", opcode, cpu.pc-1);
             decode_exec(opcode);
             cycles = op_cycles[opcode] + extra_cycles;
         }
@@ -264,11 +255,6 @@ uint8_t* get_aligned_register(uint8_t opcode)
         default: return NULL;
     }
 }
-
-// uint8_t get_aligned_operand(uint8_t opcode)
-// {
-//     return get_register( get_aligned_register(opcode) );
-// }
 
 /* -------------- stack operations -------------- */
 
@@ -744,8 +730,8 @@ void ccf()
     if (hflag() || (!nflag() && (cpu.a & 0xF) > 9))
         correction |= 0x6;
 
-    if (cflag() || (!nflag() && cpu.a > 0x99)) {
-        
+    if (cflag() || (!nflag() && cpu.a > 0x99))
+    {    
         correction |= 0x60;
         set_cflag(1);
     }
@@ -767,7 +753,7 @@ void decode_exec(uint8_t opcode)
     {
         cpu.hlt = 1; // HLT
     }
-    if(opcode < 0x40)
+    else if(opcode < 0x40)
     {
         switch (opcode)
         {

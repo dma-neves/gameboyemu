@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #define MEM_SIZE 0x10000
+#define BR_SIZE 0x100 // Bootrom size
 
 #define ROM_B00_ADR 0x0000
 #define ROM_BNN_ADR 0x4000

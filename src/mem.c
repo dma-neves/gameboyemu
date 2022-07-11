@@ -7,8 +7,6 @@
 #include "cpu.h"
 #include "controls.h"
 
-#define BR_SIZE 0x100 // Bootrom size
-
 uint8_t memory[MEM_SIZE];
 uint8_t bootrom[BR_SIZE];
 
@@ -139,8 +137,13 @@ uint8_t restricted_memory(uint16_t address)
 
 int mmu_write(uint16_t address, uint8_t byte)
 {
-    if(address == BOOT_OFF_ADR)
+    if(address <= 0x7FFF || restricted_memory(address))
+        return 1;
+
+    if(address == BOOT_OFF_ADR && memory[address] == 0x1)
     {
+        return 1;
+
         #ifndef DEBUG
             printf("Boot terminated\n");
         #endif
@@ -149,12 +152,6 @@ int mmu_write(uint16_t address, uint8_t byte)
             set_debug(1);
         #endif
     }
-
-    if(address <= 0x7FFF || restricted_memory(address))
-        return 1;
-
-    if(address == BOOT_OFF_ADR && memory[address] == 0x1)
-        return 1;
 
     if(address == DIV_ADR)
     {
@@ -178,18 +175,8 @@ int mmu_write(uint16_t address, uint8_t byte)
     return 1;
 }
 
-void mmu_write_u16(uint16_t address, uint16_t byte)
-{
-    uint8_t lower = byte & 0xFF;
-    uint8_t higher = byte >> 8;
-
-    mmu_write(address, lower);
-    mmu_write(address+1, higher);
-}
-
 void mmu_read(uint16_t address, uint8_t* dest)
 {
-    // TODO: When the PPU is accessing some video-related memory, that memory is inaccessible to the CPU: writes are ignored, and reads return garbage values (usually $FF).
     // TODO: When performing dma transfer, cpu can only read from HRAM 
 
     #ifdef DEBUG
@@ -219,4 +206,13 @@ void mmu_read_u16(uint16_t address, uint16_t* dest)
     mmu_read(address, &lower);
 
     *dest = lower | (higher << 8);
+}
+
+void mmu_write_u16(uint16_t address, uint16_t byte)
+{
+    uint8_t lower = byte & 0xFF;
+    uint8_t higher = byte >> 8;
+
+    mmu_write(address, lower);
+    mmu_write(address+1, higher);
 }

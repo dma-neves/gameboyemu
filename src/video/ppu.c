@@ -41,6 +41,14 @@ static uint8_t stat_int_line = 0x0; // stat interrupt line
 uint8_t obj_filled_pixels[NROWS] = {0}; // Binary array indicating which pixels have already been drawn (by sprites) in the current line
 uint8_t bgw_filled_pixels[NROWS] = {0}; // Binary array indicating which pixels have already been drawn (by background/window) in the current line
 
+/* -------------- LCD Color -------------- */
+
+typedef struct LCDColor
+{
+    uint8_t index;
+    uint8_t color;
+} LCDColor;
+
 /* -------------- LCD Control -------------- */
 
 uint8_t bg_window_enable()      { return (*lcdc & 0x01) != 0; }
@@ -107,7 +115,7 @@ static void clear_filled_pixels()
     memset(bgw_filled_pixels, 0, sizeof(uint8_t)*NROWS);
 }
 
-static uint8_t get_tile_color(uint8_t tile_row_0, uint8_t tile_row_1, uint8_t tile_x, uint8_t palette)
+static LCDColor get_tile_color(uint8_t tile_row_0, uint8_t tile_row_1, uint8_t tile_x, uint8_t palette)
 {
     // bit 7 represents the leftmost pixel, and bit 0 the rightmost
     uint8_t color_index_bit_0, color_index_bit_1, color_index;
@@ -123,7 +131,7 @@ static uint8_t get_tile_color(uint8_t tile_row_0, uint8_t tile_row_1, uint8_t ti
     color_bit_1 = ( palette >> (color_index*2+1) ) & 0x1;
     color = color_bit_0 | (color_bit_1 << 0x1);
 
-    return color;
+    return (LCDColor){color_index, color};
 }
 
 void draw_tiles(uint8_t scroll_x, uint8_t scroll_y, uint8_t offset_x, uint8_t offset_y, uint8_t tile_map_area_flag)
@@ -184,7 +192,7 @@ void draw_tiles(uint8_t scroll_x, uint8_t scroll_y, uint8_t offset_x, uint8_t of
         mmu_read(tile_data_address+1, &tile_row_0);
         mmu_read(tile_data_address+0, &tile_row_1);
 
-        uint8_t color = get_tile_color(tile_row_0, tile_row_1, tile_x, *bgp);
+        uint8_t color = get_tile_color(tile_row_0, tile_row_1, tile_x, *bgp).color;
         set_pixel(lcd_x, lcd_y, color);
         if(color != 0)
             bgw_filled_pixels[lcd_x] = 1;
@@ -274,13 +282,13 @@ void draw_sprites()
             {
                 uint8_t tile_x = x_flip ? obj_width - (x - object.pos_x) :  x - object.pos_x; // X coordinate within tile row
                 uint8_t palette = pallet_number ? *obp1 : *obp0; // Sellect pallete based on flag
-                uint8_t color = get_tile_color(tile_row_0, tile_row_1, tile_x, palette);
+                LCDColor lcdcolor = get_tile_color(tile_row_0, tile_row_1, tile_x, palette);
 
-                if(color != TRANSPARENT)
+                if(lcdcolor.index != TRANSPARENT)
                 {
                     obj_filled_pixels[x] = 1;
                     if(!(bg_over_obj && bgw_filled_pixels[x]))
-                        set_pixel(x, *ly, color);
+                        set_pixel(x, *ly, lcdcolor.color);
                 }
             }
         }
@@ -304,7 +312,7 @@ void update_ppu(uint8_t cycles)
     {
         free_vram_oam();
         *ly = 0;
-        //*lcdc_stat = 0x0;
+        *lcdc_stat = 0x0;
         return;
     }
 
