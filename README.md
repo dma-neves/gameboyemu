@@ -3,17 +3,16 @@
 ### Description
   - Work in progress.
   - A Gameboy emulator written in c.
-  - Currently passes all individual [blaggr](https://github.com/retrio/gb-test-roms) cpu_instrs tests and Tetris is playable.
+  - Currently passes all individual [blaggr](https://github.com/retrio/gb-test-roms) `cpu_instrs` tests and Tetris is playable.
 
 ### TODO
   - Memory bank switching.
-  - Fix Dr. Mario.
+  - Sound.
 
 ### References
   - [Pandocs](https://gbdev.io/pandocs/)
   - [CPU opcode table](https://izik1.github.io/gbops/)
   - [CPU opcode descriptions](https://rgbds.gbdev.io/docs/v0.5.1/gbz80.7)
-  - [Memory map](http://gameboy.mongenel.com/dmg/asmmemmap.html)
   - [The Gameboy Emulator Development Guide](https://hacktixme.ga/GBEDG/)
   - Emu dev Discord: Thank you for all the help debugging my countless bugs
 
@@ -36,9 +35,9 @@
 
 ### Images
 
-<br/> ![alt text](other/images/boot.png)
-
-<br/> ![alt text](other/images/tetris_menu.png)
-
-<br/> ![alt text](other/images/tetris.png)
-
+|   |   |
+|:---:|:---:|
+| <br/> ![alt text](other/images/boot.png) | <br/> ![alt text](other/images/tetris_menu.png) |
+| Nintendo's boot sequence | Tetris menu |
+| <br/> ![alt text](other/images/tetris.png) | |
+| Tetris gameplay | |
