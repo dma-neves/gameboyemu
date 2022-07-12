@@ -7,9 +7,9 @@
 
 #define MEM_SIZE 0x10000
 #define BR_SIZE 0x100 // Bootrom size
-
 #define CART_HEADER_SIZE 0x150
-#define MAX_CART_SIZE (0x8000 - CART_HEADER_SIZE) // Max cartridge size without counting header
+#define MAX_CART_SIZE (0x8000 - CART_HEADER_SIZE) // Max cartridge size (without MBC) without counting header 
+#define MEM_BANK_SIZE 0x4000
 
 #define ROM_B00_ADR 0x0000
 #define ROM_BNN_ADR 0x4000
@@ -75,5 +75,8 @@ void mmu_read(uint16_t address, uint8_t* dest);
 
 void mmu_write_u16(uint16_t address, uint16_t byte);
 void mmu_read_u16(uint16_t address, uint16_t* dest);
+
+void load_memory_bank_0(uint8_t* data);
+void load_memory_bank_n(uint8_t* data);
 
 #endif

@@ -1,13 +1,13 @@
 LIBS=-lSDL2
 
-_DEPS=main.c cpu.h memory/mem.h timer.h controls.h video/ppu.h video/ui.h video/obj_list.h
+_DEPS=main.c cpu.h timer.h controls.h memory/mem.h memory/file_loader.h memory/mbc1.h video/ppu.h video/ui.h video/obj_list.h
 DEPS=$(patsubst %,src/%,$(_DEPS))
 
 CC=gcc
 CFLAGS=-I src -g -Wall -Wformat
 
 ODIR=obj
-_OBJ=main.o cpu.o memory/mem.o timer.o controls.o video/ppu.o video/ui.o video/obj_list.o
+_OBJ=main.o cpu.o timer.o controls.o memory/mem.o memory/file_loader.o memory/mbc1.o video/ppu.o video/ui.o video/obj_list.o
 OBJ=$(patsubst %,$(ODIR)/%,$(_OBJ))
 
 emu: $(OBJ)

@@ -1,11 +1,12 @@
 #include "memory/mem.h"
+#include "memory/file_loader.h"
+#include "memory/mbc1.h"
 #include "timer.h"
+#include "cpu.h"
+#include "controls.h"
 
 #include <string.h>
 #include <stdio.h>
-
-#include "cpu.h"
-#include "controls.h"
 
 uint8_t memory[MEM_SIZE];
 uint8_t bootrom[BR_SIZE];
@@ -76,34 +77,6 @@ void reset_memory()
     dma_transfer_counter = 0;
 }
 
-static int load_file(char* file, uint16_t file_offset, uint8_t* dest, uint16_t dest_offset, uint16_t max)
-{
-    FILE *fp;
-    int c, i;
-
-    fp = fopen(file, "rb");
-    if (fp == NULL)
-    {
-        fprintf(stderr, "error: cannot open input file\n");
-        return -1;
-    }
-
-    if(file_offset)
-        fseek(fp, file_offset, SEEK_SET);
-
-    for (i = 0; i <= max && (c = getc(fp)) != EOF; i++)
-        dest[dest_offset + i] = (uint8_t)c;
-
-    // if(c != EOF)
-    // {
-    //     fprintf(stderr, "error: file to big (max size: %d bytes)\n", max);
-    //     fclose(fp);
-    //     return -1;
-    // }
-
-    return fclose(fp);
-}
-
 int load_bootrom(char* file)
 {
     return load_file(file, 0, bootrom, 0, BR_SIZE);
@@ -123,6 +96,10 @@ int load_rom(char* file)
     uint8_t rom_size = memory[0x148];
     uint8_t ram_size = memory[0x149];
 
+    printf("cartridge type code: 0x%x\n", cart_type);
+    printf("rom size code: 0x%x\n", rom_size);
+    printf("ram size code: 0x%x\n", ram_size);
+
     switch(cart_type)
     {
         case 0x0:
@@ -131,6 +108,7 @@ int load_rom(char* file)
 
         case 0x1:
             mbc1_enabled = 1;
+            ret = mbc1_load_file(file);
             break;
 
         default:
@@ -140,6 +118,16 @@ int load_rom(char* file)
     }
 
     return ret;
+}
+
+void load_memory_bank_0(uint8_t* data)
+{
+    memcpy(memory, data, MEM_BANK_SIZE);
+}
+
+void load_memory_bank_n(uint8_t* data)
+{
+    memcpy(memory+MEM_BANK_SIZE, data, MEM_BANK_SIZE);
 }
 
 void lock_vram_oam()
