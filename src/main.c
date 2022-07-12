@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "mem.h"
+#include "memory/mem.h"
 #include "cpu.h"
 #include "timer.h"
 #include "video/ppu.h"
@@ -38,17 +38,25 @@ int main(int argc, char** argv)
     }
 
     reset_system();
+
     #ifndef DEBUG
         printf("Loading bootrom\n");
     #endif
-    load_bootrom(argv[1]);
+
+    if(load_bootrom(argv[1]) == -1)
+        exit(1);
+
     #ifndef DEBUG
         printf("Loading rom\n");
     #endif
-    load_rom(argv[2]);
+
+    if(load_rom(argv[2]) == -1)
+        exit(1);
+
     #ifndef DEBUG
         printf("Initializing UI\n");
     #endif
+    
     init_ui();
 
     #ifndef DEBUG

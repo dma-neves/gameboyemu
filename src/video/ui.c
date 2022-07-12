@@ -1,5 +1,5 @@
 #include "video/ui.h"
-#include "mem.h"
+#include "memory/mem.h"
 
 #include <SDL2/SDL.h>
 

@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "mem.h"
+#include "memory/mem.h"
 #include "video/ppu.h"
 
 /* -------------- data -------------- */

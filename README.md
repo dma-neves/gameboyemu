@@ -3,7 +3,7 @@
 ### Description
   - Work in progress.
   - A Gameboy emulator written in c.
-  - Currently passes all individual [blaggr](https://github.com/retrio/gb-test-roms) `cpu_instrs` tests and Tetris is playable.
+  - Currently passes all individual [blaggr](https://github.com/retrio/gb-test-roms) `cpu_instrs` tests and games without memory bank controller (MBC) are playable.
 
 ### TODO
   - Memory bank switching.
@@ -37,7 +37,7 @@
 
 |   |   |
 |:---:|:---:|
-| <br/> ![alt text](other/images/boot.png) | <br/> ![alt text](other/images/tetris_menu.png) |
+| ![alt text](other/images/boot.png) | ![alt text](other/images/tetris_menu.png) |
 | Nintendo's boot sequence | Tetris menu |
-| <br/> ![alt text](other/images/tetris.png) | |
-| Tetris gameplay | |
+| ![alt text](other/images/tetris.png) | ![alt text](other/images/drmario.png) |
+| Tetris gameplay | Dr. Mario |

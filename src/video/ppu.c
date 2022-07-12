@@ -1,5 +1,5 @@
 #include "video/ppu.h"
-#include "mem.h"
+#include "memory/mem.h"
 #include "video/ui.h"
 #include "video/obj_list.h"
 #include "cpu.h"

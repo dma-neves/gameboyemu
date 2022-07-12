@@ -1,4 +1,4 @@
-#include "mem.h"
+#include "memory/mem.h"
 #include "timer.h"
 
 #include <string.h>
@@ -30,7 +30,10 @@ uint8_t* obp0 = memory + OBP0_ADR;
 uint8_t* obp1 = memory + OBP1_ADR;
 uint8_t* joyp = memory + JOYP_ADR;
 
+/* -------------- flags -------------- */
+
 uint8_t vram_oam_locked = 1;
+uint8_t mbc1_enabled = 0;
 
 /* -------------- dma -------------- */
 
@@ -73,7 +76,7 @@ void reset_memory()
     dma_transfer_counter = 0;
 }
 
-static int load_file(char* file, uint8_t* dest, uint16_t offset, uint16_t max)
+static int load_file(char* file, uint16_t file_offset, uint8_t* dest, uint16_t dest_offset, uint16_t max)
 {
     FILE *fp;
     int c, i;
@@ -85,27 +88,58 @@ static int load_file(char* file, uint8_t* dest, uint16_t offset, uint16_t max)
         return -1;
     }
 
-    for (i = 0; i <= max && (c = getc(fp)) != EOF; i++)
-        dest[offset + i] = (uint8_t)c;
+    if(file_offset)
+        fseek(fp, file_offset, SEEK_SET);
 
-    if(c != EOF)
-    {
-        fprintf(stderr, "error: rom to big (Max size: %d bytes)\n", max);
-        fclose(fp);
-        return -1;
-    }
+    for (i = 0; i <= max && (c = getc(fp)) != EOF; i++)
+        dest[dest_offset + i] = (uint8_t)c;
+
+    // if(c != EOF)
+    // {
+    //     fprintf(stderr, "error: file to big (max size: %d bytes)\n", max);
+    //     fclose(fp);
+    //     return -1;
+    // }
 
     return fclose(fp);
 }
 
 int load_bootrom(char* file)
 {
-    return load_file(file, bootrom, 0, BR_SIZE);
+    return load_file(file, 0, bootrom, 0, BR_SIZE);
+}
+
+static int load_header(char* file)
+{
+    return load_file(file, 0, memory, ROM_B00_ADR, CART_HEADER_SIZE);
 }
 
 int load_rom(char* file)
 {
-    return load_file(file, memory, ROM_B00_ADR, VRAM_ADR);
+    int ret = load_header(file);
+    if(ret == -1) return -1;
+
+    uint8_t cart_type = memory[0x147];
+    uint8_t rom_size = memory[0x148];
+    uint8_t ram_size = memory[0x149];
+
+    switch(cart_type)
+    {
+        case 0x0:
+            ret = load_file(file, CART_HEADER_SIZE, memory, ROM_B00_ADR+CART_HEADER_SIZE, MAX_CART_SIZE);
+            break;
+
+        case 0x1:
+            mbc1_enabled = 1;
+            break;
+
+        default:
+            printf("error: mbc > 1 not supported\n");
+            ret = -1;
+            break;
+    }
+
+    return ret;
 }
 
 void lock_vram_oam()

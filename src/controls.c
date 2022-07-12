@@ -1,5 +1,5 @@
 #include "controls.h"
-#include "mem.h"
+#include "memory/mem.h"
 
 #include <stdio.h>
 

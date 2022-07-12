@@ -8,6 +8,9 @@
 #define MEM_SIZE 0x10000
 #define BR_SIZE 0x100 // Bootrom size
 
+#define CART_HEADER_SIZE 0x150
+#define MAX_CART_SIZE (0x8000 - CART_HEADER_SIZE) // Max cartridge size without counting header
+
 #define ROM_B00_ADR 0x0000
 #define ROM_BNN_ADR 0x4000
 #define VRAM_ADR 0x8000

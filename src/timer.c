@@ -1,5 +1,5 @@
 #include "timer.h"
-#include "mem.h"
+#include "memory/mem.h"
 #include "cpu.h"
 
 #include <stdint.h>
