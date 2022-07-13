@@ -312,7 +312,8 @@ void update_ppu(uint8_t cycles)
     {
         free_vram_oam();
         *ly = 0;
-        *lcdc_stat = 0x0;
+        set_stat_bit(0x0, 0x0);
+        set_stat_bit(0x1, 0x0);
         return;
     }
 
