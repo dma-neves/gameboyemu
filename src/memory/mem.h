@@ -62,6 +62,8 @@ extern uint8_t* obp1;
 extern uint8_t* joyp;
 
 void reset_memory();
+void memory_destroy();
+
 int load_bootrom(char* file);
 int load_rom(char* file);
 

@@ -1,6 +1,6 @@
 #include "memory/file_loader.h"
 
-int load_file(char* file, uint16_t file_offset, uint8_t* dest, uint16_t dest_offset, uint16_t max)
+int load_file(char* file, long file_offset, uint8_t* dest, long dest_offset, long max)
 {
     FILE *fp;
     int c, i;

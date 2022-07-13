@@ -77,6 +77,12 @@ void reset_memory()
     dma_transfer_counter = 0;
 }
 
+void memory_destroy()
+{
+    if(mbc1_enabled)
+        mbc1_destroy();
+}
+
 int load_bootrom(char* file)
 {
     return load_file(file, 0, bootrom, 0, BR_SIZE);
@@ -159,6 +165,15 @@ uint8_t restricted_memory(uint16_t address)
 
 int mmu_write(uint16_t address, uint8_t byte)
 {
+    if(mbc1_enabled && address >= 0x2000 && address <= 0x3FFF)
+        mbc1_switch_bank(byte);
+
+    if(mbc1_enabled && address >= 0x4000 && address <= 0x5FFF)
+        printf("MBC REG 0x4000\n");
+
+    if(mbc1_enabled && address >= 0x6000 && address <= 0x7FFF)
+        printf("MBC REG 0x6000\n");
+
     if(address <= 0x7FFF || restricted_memory(address))
         return 1;
 

@@ -56,7 +56,7 @@ int main(int argc, char** argv)
     #ifndef DEBUG
         printf("Initializing UI\n");
     #endif
-    
+
     init_ui();
 
     #ifndef DEBUG
@@ -93,6 +93,8 @@ int main(int argc, char** argv)
             render_ui();
         }
     }
+
+    memory_destroy();
 }
 
 void handle_events()
