@@ -3,10 +3,11 @@
 ### Description
   - Work in progress.
   - A Gameboy emulator written in c.
-  - Currently passes all individual [blaggr](https://github.com/retrio/gb-test-roms) `cpu_instrs` tests and games without memory bank controller (MBC) are playable.
+  - Currently passes all individual [blaggr](https://github.com/retrio/gb-test-roms) `cpu_instrs` tests and some games are playable.
 
 ### TODO
-  - Memory bank switching.
+  - Add all mbc1 features.
+  - mbc > 1.
   - Sound.
 
 ### References
