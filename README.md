@@ -37,7 +37,9 @@
 
 |   |   |
 |:---:|:---:|
-| ![alt text](other/images/boot.png) | ![alt text](other/images/tetris_menu.png) |
-| Nintendo's boot sequence | Tetris menu |
-| ![alt text](other/images/tetris.png) | ![alt text](other/images/drmario.png) |
-| Tetris gameplay | Dr. Mario |
+| ![alt text](other/images/boot.png) | ![alt text](other/images/blargg.png) |
+| Nintendo's boot sequence | Blargg's cpu_instrs tests |
+| ![alt text](other/images/tetris_menu.png) | ![alt text](other/images/tetris.png) |
+| Tetris menu | Tetris gameplay |
+| ![alt text](other/images/drmario.png) | ![alt text](other/images/super_mario_land.png)
+| Dr. Mario | Super Mario Land |

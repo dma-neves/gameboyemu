@@ -229,8 +229,10 @@ void mmu_read(uint16_t address, uint8_t* dest)
         *dest = 0xFF;
         return;
     }
-    
-    if(address <= 0xFF && !memory[BOOT_OFF_ADR])
+
+    if(address == KEY1_ADR)
+        *dest = 0xFF;    
+    else if(address <= 0xFF && !memory[BOOT_OFF_ADR])
         *dest = bootrom[address];
     else
         *dest = memory[address];

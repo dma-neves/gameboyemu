@@ -37,6 +37,7 @@
 #define OBP1_ADR 0xFF49
 #define WY_ADR 0xFF4A
 #define WX_ADR 0xFF4B
+#define KEY1_ADR 0xFF4D
 #define BOOT_OFF_ADR 0xFF50
 #define HRAM_ADR 0xFF80
 #define IE_ADR 0xFFFF
