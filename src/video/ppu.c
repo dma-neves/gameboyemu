@@ -127,8 +127,8 @@ static LCDColor get_tile_color(uint8_t tile_row_0, uint8_t tile_row_1, uint8_t t
 
     // Color depends on palette
     uint8_t color_bit_0, color_bit_1, color;
-    color_bit_0 = ( palette >> (color_index*2) ) & 0x1;
-    color_bit_1 = ( palette >> (color_index*2+1) ) & 0x1;
+    color_bit_0 = ( palette >> (color_index*2+1) ) & 0x1;
+    color_bit_1 = ( palette >> (color_index*2) ) & 0x1;
     color = color_bit_0 | (color_bit_1 << 0x1);
 
     return (LCDColor){color_index, color};
@@ -280,7 +280,7 @@ void draw_sprites()
         {
             if(!obj_filled_pixels[x])
             {
-                uint8_t tile_x = x_flip ? obj_width - (x - object.pos_x) :  x - object.pos_x; // X coordinate within tile row
+                uint8_t tile_x = x_flip ? (obj_width - 1) - (x - object.pos_x) :  x - object.pos_x; // X coordinate within tile row
                 uint8_t palette = pallet_number ? *obp1 : *obp0; // Sellect pallete based on flag
                 LCDColor lcdcolor = get_tile_color(tile_row_0, tile_row_1, tile_x, palette);
 
