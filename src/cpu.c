@@ -134,7 +134,7 @@ uint8_t step()
     }
     else
     {
-        cycles = 4; // TODO: Check this
+        cycles = 4;
     }
 
     cycles += handle_interrupts();

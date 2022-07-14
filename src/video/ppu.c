@@ -330,9 +330,6 @@ void update_ppu(uint8_t cycles)
     if(line_cycle_counter >= LINE_CYCLES)
     {
         line_cycle_counter -= LINE_CYCLES;
-
-        // if(*ly < NLINES)
-        //     draw_line();
         
         if(*ly >= NLINES+VBLANK)
         {
@@ -341,11 +338,11 @@ void update_ppu(uint8_t cycles)
         }
         else
             (*ly)++;
-    }
 
-    // Set VBLANK interrupt flag
-    if(*ly == NLINES)
-        request_interrupt(VBLANK_INT);
+        // Set VBLANK interrupt flag
+        if(*ly == NLINES)
+            request_interrupt(VBLANK_INT);
+    }
 
     set_stat();
 }

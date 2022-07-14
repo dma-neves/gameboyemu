@@ -165,6 +165,12 @@ uint8_t restricted_memory(uint16_t address)
 
 int mmu_write(uint16_t address, uint8_t byte)
 {
+    if(address == LYC_ADR)
+        printf("changing lyc to: 0x%x\n", byte);
+
+    if(address == LCDC_STAT_ADR)
+        printf("changing lcd stat to: 0x%x\n", byte);
+
     if(mbc1_enabled && address <= 0x7FFF)
     {
         if(address <= 0x1FFF)
