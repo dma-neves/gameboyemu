@@ -12,6 +12,7 @@
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
 #define LINE_CYCLES 456
+#define LINE_CYCLES_BHB (OAM_SEARCH_CYCLES + MEM_READ_CYCLES) // Line cycles before hblank starts
 #define NLINES 144
 #define NROWS 160
 #define VBLANK 10
@@ -318,12 +319,20 @@ void update_ppu(uint8_t cycles)
     }
 
     line_cycle_counter += cycles;
+
+    // Draw line right when hblank starts
+    if(line_cycle_counter >= LINE_CYCLES_BHB && (line_cycle_counter-cycles) < LINE_CYCLES_BHB)
+    {
+        if(*ly < NLINES)
+            draw_line();
+    }
+
     if(line_cycle_counter >= LINE_CYCLES)
     {
         line_cycle_counter -= LINE_CYCLES;
 
-        if(*ly < NLINES)
-            draw_line();
+        // if(*ly < NLINES)
+        //     draw_line();
         
         if(*ly >= NLINES+VBLANK)
         {

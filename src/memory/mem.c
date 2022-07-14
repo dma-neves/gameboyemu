@@ -165,14 +165,24 @@ uint8_t restricted_memory(uint16_t address)
 
 int mmu_write(uint16_t address, uint8_t byte)
 {
-    if(mbc1_enabled && address >= 0x2000 && address <= 0x3FFF)
-        mbc1_switch_bank(byte);
-
-    if(mbc1_enabled && address >= 0x4000 && address <= 0x5FFF)
-        printf("MBC REG 0x4000\n");
-
-    if(mbc1_enabled && address >= 0x6000 && address <= 0x7FFF)
-        printf("MBC REG 0x6000\n");
+    if(mbc1_enabled && address <= 0x7FFF)
+    {
+        if(address <= 0x1FFF)
+        {
+            // ignore
+            return 1;
+        }
+        else if(address <= 0x3FFF)
+        {
+            mbc1_switch_bank(byte);
+            return 1;
+        }
+        else
+        {
+            printf("error: unsupported mbc1 feaure\n");
+            return 1;
+        }
+    }
 
     if(address <= 0x7FFF || restricted_memory(address))
         return 1;

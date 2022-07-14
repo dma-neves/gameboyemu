@@ -4,6 +4,7 @@
   - Work in progress.
   - A Gameboy emulator written in c.
   - Currently passes all individual [blaggr](https://github.com/retrio/gb-test-roms) `cpu_instrs` tests and some games are playable.
+  - Regarding cartridge memory controllers only MBC1 has been implemented.
 
 ### TODO
   - Add all mbc1 features.
