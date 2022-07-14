@@ -1,5 +1,7 @@
 # Gameboy Emulator
 
+![alt text](other/images/super_mario_land.gif)
+
 ### Description
   - Work in progress.
   - A Gameboy emulator written in c.
@@ -43,5 +45,5 @@
 | Nintendo's boot sequence | Blargg's cpu_instrs tests |
 | ![alt text](other/images/tetris_menu.png) | ![alt text](other/images/tetris.png) |
 | Tetris menu | Tetris gameplay |
-| ![alt text](other/images/drmario.png) | ![alt text](other/images/super_mario_land.gif)
+| ![alt text](other/images/drmario.png) | ![alt text](other/images/super_mario_land.png)
 | Dr. Mario | Super Mario Land |
