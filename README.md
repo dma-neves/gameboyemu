@@ -43,7 +43,5 @@
 | Nintendo's boot sequence | Blargg's cpu_instrs tests |
 | ![alt text](other/images/tetris_menu.png) | ![alt text](other/images/tetris.png) |
 | Tetris menu | Tetris gameplay |
-| ![alt text](other/images/drmario.png) | ![alt text](other/images/super_mario_land.png)
+| ![alt text](other/images/drmario.png) | ![alt text](other/images/super_mario_land.gif)
 | Dr. Mario | Super Mario Land |
-
-### Videos
