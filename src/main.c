@@ -14,7 +14,7 @@
     gameboy's cpu runs at 4194304Hz <=> 
     (4194304) * (1/59.73) = 70221 cycles every ~ 1/60 seconds
 */
-#define CYCLE_THRESHOLD 70221 
+#define CYCLE_THRESHOLD 70221
 
 /* flags */
 uint8_t running = 1;
@@ -67,6 +67,8 @@ int main(int argc, char** argv)
     double clk = 0;
     double dt;
     double timer_60;
+    double timer_1;
+    int frames = 0;
     while(running)
     {
         handle_events();
@@ -75,6 +77,7 @@ int main(int argc, char** argv)
         clk = (double)clock()/CLOCKS_PER_SEC;
         dt = clk - dt;
         timer_60 += dt;
+        timer_1 += dt;
 
         if(cycles < CYCLE_THRESHOLD)
         {
@@ -91,6 +94,14 @@ int main(int argc, char** argv)
             cycles = 0;
             timer_60 = 0;
             render_ui();
+            frames++;
+        }
+
+        if(timer_1 >= 1.f)
+        {
+            timer_1 = 0;
+            printf("fps: %d\n", frames);
+            frames = 0;
         }
     }
 
